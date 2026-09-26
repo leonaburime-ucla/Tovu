@@ -58,6 +58,13 @@ primary_region = "iad" # PLACEHOLDER — confirm the intended region.
   TOVU_RUNTIME_MODE = "production"
   PORT = "3000"
 
+  # The live site's folder on the `tovu_sites` volume below. Pinned 2026-09-26 when the repo's own
+  # site folder was renamed `sites/tovu-com` -> `sites/tovu-dev` (which also changed the code default,
+  # `DEFAULT_SITE_NAME`): the volume still holds `tovu-com/`, and without this pin the next deploy
+  # would boot an empty `tovu-dev/` next to it. To rename the live folder too, stop the machine,
+  # `mv /workspace/Tovu/sites/tovu-com /workspace/Tovu/sites/tovu-dev` on the volume, then drop this line.
+  TOVU_SITE = "tovu-com"
+
   # This deployment's public origin. NOT a secret (it is the URL crawlers already see), so it
   # belongs here rather than in `fly secrets set`.
   #
