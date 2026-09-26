@@ -81,6 +81,12 @@ import type { MenuRepoPort, MenuStatus, NavMenuDoc, NavMenuEntry } from "./index
  * publish (its own header; `precheck` below does not validate ref targets for the identical reason),
  * so this ordering is a best-effort freshness improvement — apply posts/pages first so most refs
  * resolve immediately after a full sync — not a correctness requirement `apply()` depends on.
+ *
+ * Deliberately NOT widened to `term`/`collection-entry` (plan-publish-all-types §3.8): the write
+ * path (`import-menu.ts` → `validateAndCloneTree`, Jini `menu-service.ts` `validateTarget`) checks a
+ * `termRef`/`entryRef` target's shape only, never that it exists, so those refs are soft and need no
+ * ordering. Widening would also close a cycle once a widget names a menu (post → widget → menu →
+ * post). `publish-content-manifest.test.ts` builds the real catalog to catch that.
  */
 
 const MENU_DEPENDS_ON: readonly string[] = ["post", "page"];

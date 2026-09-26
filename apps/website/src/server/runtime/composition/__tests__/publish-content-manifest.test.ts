@@ -34,6 +34,7 @@ import { contentHash, CONTENT_HASH_VERSION } from "#src/features/publish-content
 import { packThemeFilesEntities } from "#src/features/theme/publish-content";
 import { createRedirect, InMemoryRedirectRepo, redirectMatcher, type RedirectsWriteDeps } from "#src/features/redirects/index";
 import {
+  buildPublishContentCatalog,
   listPublishContentContributors,
   resetPublishContentContributorsForTests,
   type PublishContentDeps,
@@ -51,6 +52,23 @@ test("installFirstPartyPublishContentTypes registers exactly the publishable typ
     listPublishContentContributors().map((c) => c.entityType),
     ["post", "page", "media", "redirect", "menu", "theme-files", "form", "content-type", "taxonomy", "term", "collection-entry", "widget", "widget-area"]
   );
+});
+
+// `buildPublishContentCatalog` throws on a `dependsOn` cycle, so a widened `dependsOn` (e.g. menu →
+// term/collection-entry, which a widget → menu reference would close) fails here, not at boot.
+test("the real registry's dependsOn graph has no cycle and orders each type after what it depends on", () => {
+  installFirstPartyPublishContentTypes();
+  // Order is computed before any handler is built; a bare deps bag is enough for `build()`.
+  const { applyOrder } = buildPublishContentCatalog({ ports: {} } as unknown as PublishContentDeps);
+  const at = (entityType: string): number => applyOrder.indexOf(entityType);
+
+  assert.equal(applyOrder.length, listPublishContentContributors().length);
+  for (const contributor of listPublishContentContributors()) {
+    for (const dependency of contributor.dependsOn) {
+      assert.ok(at(dependency) < at(contributor.entityType), `${dependency} before ${contributor.entityType}`);
+    }
+  }
+  assert.ok(at("post") < at("menu") && at("page") < at("menu"), "menus after the posts/pages they link to");
 });
 
 test("installFirstPartyPublishContentTypes is idempotent — calling it twice leaves the registry in the same state as calling it once", () => {
