@@ -911,6 +911,10 @@ export function createRouteDeps(options: CreateRouteDepsOptions = {}): Newslette
           entryRepo,
           entryRefsRepo,
           widgetBindingRepo,
+          settingsRepo,
+          principalRepo: identity.principalRepo,
+          presentationRepo,
+          themes: siteThemes,
         }),
         "theme-files": {
           // S19 (S-F4) — same value `routeDeps.themesDir` (below) resolves to. See

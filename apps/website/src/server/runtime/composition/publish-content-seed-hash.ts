@@ -5,6 +5,8 @@ import { join } from "node:path";
 import type { ClockPort, IdGeneratorPort } from "@jini-ai/cms/core";
 
 import { SqliteMenuRepo } from "#src/features/navigation/repo.sqlite";
+import { SqlitePresentationSettingsRepo } from "#src/features/presentation/repo.sqlite";
+import { SqliteSettingsRepo } from "#src/features/settings/repo.sqlite";
 import { SqlitePostRepo } from "#src/features/post/index";
 import { createPublishContentSeedHash, type PublishContentSeedHashFn } from "#src/features/publish-content/seed-hash";
 import { SqliteRedirectRepo, type RedirectsWriteDeps } from "#src/features/redirects/index";
@@ -111,6 +113,11 @@ export function createSqlitePublishContentSeedHash(input: CreateSqlitePublishCon
             entryRepo: new SqliteEntryRepo(seedDb),
             entryRefsRepo: unusedBySeedInspect("entryRefsRepo"),
             widgetBindingRepo: unusedBySeedInspect("widgetBindingRepo"),
+            // Read by site-setting/active-theme `inspect()`; `themes` only fills a packed-only field.
+            settingsRepo: new SqliteSettingsRepo(seedDb),
+            principalRepo: unusedBySeedInspect("principalRepo"),
+            presentationRepo: new SqlitePresentationSettingsRepo(seedDb),
+            themes: [],
           }),
         },
       };

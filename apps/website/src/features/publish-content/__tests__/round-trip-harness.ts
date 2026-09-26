@@ -5,7 +5,10 @@ import { InMemoryContentTypeRepo, NoopContentTypeIndexProvisioner } from "#src/f
 import { SqliteEntryRepo } from "#src/features/entries/repo.sqlite";
 import { SqliteFormDefinitionRepo } from "#src/features/forms/repo.sqlite";
 import { SqlitePostRepo } from "#src/features/post/index";
+import { SqlitePresentationSettingsRepo } from "#src/features/presentation/repo.sqlite";
+import { SqliteSettingsRepo } from "#src/features/settings/repo.sqlite";
 import { SqliteEntryTermRepo, SqliteTaxonomyRepo, SqliteTaxonomyRevisionRepo, SqliteTermRepo } from "#src/features/taxonomy/repo.sqlite";
+import type { DiscoveredTheme } from "#src/features/theme/theme";
 import { openContentDb } from "#src/platform/db/sqlite/content-db";
 
 import { PUBLISH_CONTENT_ARTIFACT_FORMAT_VERSION } from "../artifact-format.js";
@@ -137,6 +140,10 @@ export function sqliteContentSite() {
     taxonomies: new SqliteTaxonomyRepo({ db, workspaceId }),
     terms: new SqliteTermRepo({ db, workspaceId }),
     entryTerms: new SqliteEntryTermRepo({ db, workspaceId }),
+    settings: new SqliteSettingsRepo(db),
+    presentation: new SqlitePresentationSettingsRepo(db),
+    /** The site's discovered themes; a test pushes stand-ins. */
+    themes: [] as DiscoveredTheme[],
   };
   const ports: Partial<PublishContentPorts> = {
     post: { repo: repos.posts, forgetRemoved: async () => {}, remove: unused("post.remove") },
@@ -154,6 +161,10 @@ export function sqliteContentSite() {
       entryRepo: repos.entries,
       entryRefsRepo: unused("entryRefsRepo"),
       widgetBindingRepo: unused("widgetBindingRepo"),
+      settingsRepo: repos.settings,
+      principalRepo: unused("principalRepo"),
+      presentationRepo: repos.presentation,
+      themes: repos.themes,
     }),
   };
   return { ...repos, ports };

@@ -22,7 +22,9 @@
       "term",
       "collection-entry",
       "widget",
-      "widget-area"
+      "widget-area",
+      "site-setting",
+      "active-theme"
     ],
     "capabilities": [
       "publish_content.read",

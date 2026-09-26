@@ -25,6 +25,10 @@ import type { EntryListExcludingTypesPort } from "#src/features/entries/public-l
 import type { EntryPublishReadPort } from "#src/features/entries/repo.sqlite";
 import type { FileBlobIndexPort } from "./file-blob-index.js";
 import type { AuthorizeFn, ChangeSetRepoPort, ClockPort, OutboxPort } from "@jini-ai/cms/core";
+import type { PrincipalRepoPort } from "@jini-ai/cms/identity";
+import type { PresentationSettingsRepoPort } from "@jini-ai/cms/presentation";
+import type { SettingsRepoPort } from "@jini-ai/cms/settings";
+import type { DiscoveredTheme } from "#src/features/theme/theme";
 
 /**
  * @file Task 2 of the publish-content (Publish Content) feature —
@@ -148,6 +152,10 @@ export interface PublishContentPorts {
   readonly "collection-entry": EntryPublishPorts;
   readonly widget: WidgetPublishPorts;
   readonly "widget-area": WidgetPublishPorts;
+  /** `set` needs `principals` in its deps; a workspace-scope write never reads it. */
+  readonly "site-setting": { readonly settings: SettingsRepoPort; readonly principals: PrincipalRepoPort };
+  /** `themes` is the root's live array (`rescanThemes` refills it in place after `theme-files` applies). */
+  readonly "active-theme": { readonly presentation: PresentationSettingsRepoPort; readonly themes: readonly DiscoveredTheme[] };
 }
 
 /** `widget` and `widget-area` share one bag: the widgets write-service deps minus the gateway fields. */

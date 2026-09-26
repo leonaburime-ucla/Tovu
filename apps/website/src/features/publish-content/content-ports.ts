@@ -29,10 +29,23 @@ export interface ContentPublishSources {
   readonly entryRepo: EntryPublishPorts["entries"] & WidgetPublishPorts["entries"];
   readonly entryRefsRepo: WidgetPublishPorts["entryRefs"];
   readonly widgetBindingRepo: WidgetPublishPorts["bindings"];
+  readonly settingsRepo: PublishContentPorts["site-setting"]["settings"];
+  readonly principalRepo: PublishContentPorts["site-setting"]["principals"];
+  readonly presentationRepo: PublishContentPorts["active-theme"]["presentation"];
+  readonly themes: PublishContentPorts["active-theme"]["themes"];
 }
 
 /** The ports keys this builder owns. */
-export type ContentPublishPortKey = "form" | "content-type" | "taxonomy" | "term" | "collection-entry" | "widget" | "widget-area";
+export type ContentPublishPortKey =
+  | "form"
+  | "content-type"
+  | "taxonomy"
+  | "term"
+  | "collection-entry"
+  | "widget"
+  | "widget-area"
+  | "site-setting"
+  | "active-theme";
 
 /** Widget types are entries too, but never carry terms. */
 const NO_TERMS_TYPES: ReadonlySet<string> = new Set(["widget", "widget_area"]);
@@ -79,5 +92,7 @@ export function buildContentPublishPorts(sources: ContentPublishSources): Pick<P
     "collection-entry": { entries: sources.entryRepo, contentTypes: sources.contentTypeRepo, terms: taxonomy },
     widget,
     "widget-area": widget,
+    "site-setting": { settings: sources.settingsRepo, principals: sources.principalRepo },
+    "active-theme": { presentation: sources.presentationRepo, themes: sources.themes },
   };
 }

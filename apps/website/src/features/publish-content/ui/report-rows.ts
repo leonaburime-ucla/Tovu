@@ -322,6 +322,32 @@ const REASON_REWRITES: readonly ReasonRewrite[] = [
     pattern: /themes folder spans two disks/,
     friendly: "The site's themes folder isn't set up correctly.",
   },
+  // Site settings and the active theme (`features/settings/publish-content.ts`,
+  // `features/theme/active-theme-publish-content.ts`), then Jini's settings/presentation refusals.
+  {
+    pattern: /^site-setting '.+' is not one this site publishes/,
+    friendly: "Only the site title and SEO basics can be published.",
+  },
+  {
+    pattern: /^site-setting '.+' points at this computer/,
+    friendly: "This image link only works on this computer. Pick an image from Media instead.",
+  },
+  {
+    pattern: /^(?:active theme '.+' is not installed at this destination|theme '.+' is not supported)/,
+    friendly: "This theme isn't on the live site yet. Publish the theme too.",
+  },
+  {
+    pattern: /^presentation settings for workspace '.+' were not found/,
+    friendly: "The live site isn't set up for themes yet. Update the live site, then try again.",
+  },
+  {
+    pattern: /^(?:setting '.+' (?:was not found|has been tombstoned|does not allow scope)|secret:true definitions are not supported)/,
+    friendly: "The live site doesn't have this setting yet. Update the live site, then try again.",
+  },
+  {
+    pattern: /^value for '.+' (?:does not match the definition schema|must be \d+\.\.\d+ characters)/,
+    friendly: "This setting's value isn't valid on the live site.",
+  },
 ];
 
 /** Matches `file-tree-policy.ts`'s generic `"<title> was not published: <detail>"` wrapping — every

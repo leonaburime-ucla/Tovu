@@ -1714,6 +1714,10 @@ export function createSqliteRouteDeps(
           entryRepo,
           entryRefsRepo,
           widgetBindingRepo,
+          settingsRepo,
+          principalRepo: identity.principalRepo,
+          presentationRepo,
+          themes: siteThemes,
         }),
         "theme-files": {
           // S19 (S-F4) — the theme-files handler's `apply()` stages/writes under this site's own

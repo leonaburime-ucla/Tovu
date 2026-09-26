@@ -50,7 +50,7 @@ test("installFirstPartyPublishContentTypes registers exactly the publishable typ
   installFirstPartyPublishContentTypes();
   assert.deepEqual(
     listPublishContentContributors().map((c) => c.entityType),
-    ["post", "page", "media", "redirect", "menu", "theme-files", "form", "content-type", "taxonomy", "term", "collection-entry", "widget", "widget-area"]
+    ["post", "page", "media", "redirect", "menu", "theme-files", "form", "content-type", "taxonomy", "term", "collection-entry", "widget", "widget-area", "site-setting", "active-theme"]
   );
 });
 
