@@ -93,7 +93,7 @@
     "@jini-ai/agent-runtime": "^0.3.7",
     "@jini-ai/agentic": "^0.3.7",
     "@jini-ai/chat": "^0.3.9",
-    "@jini-ai/cms": "^0.3.9",
+    "@jini-ai/cms": "^0.3.10",
     "@jini-ai/core": "^0.3.1",
     "@jini-ai/daemon": "^0.3.7",
     "@jini-ai/devops": "^0.3.1",

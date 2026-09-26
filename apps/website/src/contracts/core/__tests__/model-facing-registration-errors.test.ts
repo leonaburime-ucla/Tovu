@@ -10,7 +10,7 @@ import test from "node:test";
 
 import { EntryNotFoundError } from "@jini-ai/cms/entries";
 import { ToolInputError } from "@jini-ai/core";
-import type { ToolExecutionContext, ToolPolicy, ToolRegistration } from "@jini-ai/cms/core";
+import type { ToolExecutionContext, ToolPolicy, ToolRegistration } from "@jini-ai/core";
 
 import { forbiddenRule, withModelFacingRegistrationErrors, type ModelFacingErrorRule } from "../model-facing-tool-errors.js";
 
