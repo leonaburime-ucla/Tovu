@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { agentHandle } from "@jini-ai/agentic";
 
 import { TabBar } from "../../components/TabBar";
+import { PublishSectionButton } from "../publish-content/PublishSectionButton";
 import { actionLabel, orEmpty, sortIssuesBySeverity } from "./rules";
 import { useWiredEntryPicker } from "./hooks/use-entry-picker.hooks";
 import { useWiredSeoEntryPanel } from "./hooks/use-seo-entry-panel.hooks";
@@ -671,6 +672,9 @@ export function Seo({ tabId, useSeoHook = useWiredSeo }: SeoProps = {}) {
           <p className="page-description">
             {t(locale, "Site-wide defaults for meta titles, descriptions, Open Graph/Twitter cards, and robots directives.")}
           </p>
+        </div>
+        <div className="page-actions">
+          <PublishSectionButton section="settings" />
         </div>
       </div>
       {/* Both banners stay on the SHELL, above the tab strip, not inside a panel: `error` and

@@ -40,7 +40,7 @@ test("section ids are unique and every section's entityTypes are exactly its typ
   for (const s of PUBLISH_SECTIONS) assert.deepEqual(Object.keys(s.typePluralLabelKeys), Object.keys(s.typeLabelKeys));
 });
 
-test("the existing six sections still send exactly the one type they sent before", () => {
+test("the existing six sections still send exactly what they sent before, plus the active theme", () => {
   const sent = Object.fromEntries(
     ["pages", "posts", "media", "menus", "redirects", "themes"].map((id) => [id, [...publishSectionById(id)!.entityTypes]]),
   );
@@ -50,7 +50,8 @@ test("the existing six sections still send exactly the one type they sent before
     media: ["media"],
     menus: ["menu"],
     redirects: ["redirect"],
-    themes: ["theme-files"],
+    // The one deliberate change: the active theme travels with the themes.
+    themes: ["theme-files", "active-theme"],
   });
 });
 
@@ -59,6 +60,7 @@ test("the new sections send their whole type set", () => {
   assert.deepEqual([...publishSectionById("collections")!.entityTypes], ["content-type", "collection-entry"]);
   assert.deepEqual([...publishSectionById("categories")!.entityTypes], ["taxonomy", "term"]);
   assert.deepEqual([...publishSectionById("widgets")!.entityTypes], ["widget", "widget-area"]);
+  assert.deepEqual([...publishSectionById("settings")!.entityTypes], ["site-setting"]);
   assert.equal(publishSectionById("nope"), undefined);
 });
 
@@ -74,6 +76,8 @@ test("publishEntityTypeLabel names each type for an owner and falls back to the 
   assert.equal(publishEntityTypeLabel("theme-files"), "Theme");
   assert.equal(publishEntityTypeLabel("collection-entry"), "Entry");
   assert.equal(publishEntityTypeLabel("widget-area"), "Widget region");
+  assert.equal(publishEntityTypeLabel("site-setting"), "Site setting");
+  assert.equal(publishEntityTypeLabel("active-theme"), "Active theme");
   assert.equal(publishEntityTypeLabel("something-new"), "something-new");
 });
 

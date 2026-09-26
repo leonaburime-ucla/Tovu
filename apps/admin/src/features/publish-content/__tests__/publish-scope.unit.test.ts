@@ -19,7 +19,7 @@ describe("publishScopeTitleKey", () => {
     expect(publishScopeTitleKey({ entityTypes: ["media"] })).toBe("Publish media");
     expect(publishScopeTitleKey({ entityTypes: ["menu"] })).toBe("Publish menus");
     expect(publishScopeTitleKey({ entityTypes: ["redirect"] })).toBe("Publish redirects");
-    expect(publishScopeTitleKey({ entityTypes: ["theme-files"] })).toBe("Publish themes");
+    expect(publishScopeTitleKey({ entityTypes: ["theme-files", "active-theme"] })).toBe("Publish themes");
   });
 
   it("entityKeys present reads as a single-item publish, regardless of entityTypes", () => {
@@ -66,7 +66,7 @@ describe("publishScopeDescriptionKey", () => {
     expect(publishScopeDescriptionKey({ entityTypes: ["media"] })).toBe("Sends your media to the live site.");
     expect(publishScopeDescriptionKey({ entityTypes: ["menu"] })).toBe("Sends your menus to the live site.");
     expect(publishScopeDescriptionKey({ entityTypes: ["redirect"] })).toBe("Sends your redirects to the live site.");
-    expect(publishScopeDescriptionKey({ entityTypes: ["theme-files"] })).toBe("Sends your themes to the live site.");
+    expect(publishScopeDescriptionKey({ entityTypes: ["theme-files", "active-theme"] })).toBe("Sends your themes to the live site.");
   });
 
   it("reads as one item for an entityKeys scope", () => {

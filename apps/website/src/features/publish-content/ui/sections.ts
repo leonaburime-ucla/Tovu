@@ -44,8 +44,9 @@ export const PUBLISH_SECTIONS = [
     "themes",
     "Publish themes",
     "Sends your themes to the live site.",
-    { "theme-files": "Theme" },
-    { "theme-files": "Themes" },
+    // The active theme goes with the themes: a theme published without it sits unused on the live site.
+    { "theme-files": "Theme", "active-theme": "Active theme" },
+    { "theme-files": "Themes", "active-theme": "Active theme" },
   ),
   section("forms", "Publish forms", "Sends your forms to the live site.", { form: "Form" }, { form: "Forms" }),
   section(
@@ -68,6 +69,13 @@ export const PUBLISH_SECTIONS = [
     "Sends your widgets and widget regions to the live site.",
     { widget: "Widget", "widget-area": "Widget region" },
     { widget: "Widgets", "widget-area": "Widget regions" },
+  ),
+  section(
+    "settings",
+    "Publish site settings",
+    "Sends your site title and SEO defaults to the live site.",
+    { "site-setting": "Site setting" },
+    { "site-setting": "Site settings" },
   ),
 ] as const satisfies readonly PublishSection[];
 

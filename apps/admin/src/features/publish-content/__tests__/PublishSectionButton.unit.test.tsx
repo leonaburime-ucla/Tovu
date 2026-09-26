@@ -38,11 +38,12 @@ describe("PublishSectionButton", () => {
     ["media", "Publish media", ["media"]],
     ["menus", "Publish menus", ["menu"]],
     ["redirects", "Publish redirects", ["redirect"]],
-    ["themes", "Publish themes", ["theme-files"]],
+    ["themes", "Publish themes", ["theme-files", "active-theme"]],
     ["forms", "Publish forms", ["form"]],
     ["collections", "Publish collections", ["content-type", "collection-entry"]],
     ["categories", "Publish categories & tags", ["taxonomy", "term"]],
     ["widgets", "Publish widgets", ["widget", "widget-area"]],
+    ["settings", "Publish site settings", ["site-setting"]],
   ] as const)("clicking the %s section's button opens the dialog scoped to that section's whole type set", async (section, label, entityTypes) => {
     const user = userEvent.setup();
     const requestPublishSpy = vi.spyOn(publishRequestStore, "requestPublish").mockResolvedValue({
