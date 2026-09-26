@@ -4,6 +4,7 @@ import { contributeMediaPublish } from "#src/features/media/publish-content";
 import { contributeMenusPublish } from "#src/features/navigation/publish-content";
 import { contributePagePublish, contributePostPublish } from "#src/features/post/publish-content";
 import { registerPublishContentContributor } from "#src/features/publish-content/type-registry";
+import { contributeTaxonomyPublish, contributeTermPublish } from "#src/features/taxonomy/publish-content";
 import { contributeRedirectPublish } from "#src/features/redirects/publish-content";
 import { contributeThemeFilesPublish } from "#src/features/theme/publish-content";
 
@@ -51,4 +52,6 @@ export function installFirstPartyPublishContentTypes(): void {
   registerPublishContentContributor(contributeThemeFilesPublish());
   registerPublishContentContributor(contributeFormPublish());
   registerPublishContentContributor(contributeContentTypePublish());
+  registerPublishContentContributor(contributeTaxonomyPublish());
+  registerPublishContentContributor(contributeTermPublish());
 }

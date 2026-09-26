@@ -58,6 +58,9 @@ export {
   toTaxonomyOutbox,
   createPostBackedContentLookup,
   taxonomyAgentToolCatalog,
+  importTaxonomy,
+  importTerm,
+  TaxonomyVersionConflictError,
 } from "@jini-ai/cms/taxonomy";
 
 export type {
@@ -99,4 +102,6 @@ export type {
   TaxonomyAgentToolDefinition,
   TaxonomyAgentToolSideEffect,
   TaxonomyAgentToolActorClassRule,
+  ImportableTaxonomyRepoPort,
+  ImportableTermRepoPort,
 } from "@jini-ai/cms/taxonomy";

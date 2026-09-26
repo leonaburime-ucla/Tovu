@@ -897,7 +897,18 @@ export function createRouteDeps(options: CreateRouteDepsOptions = {}): Newslette
         media: { repo: mediaRepo, assetBlobRepo, blobStore },
         redirect: redirectsWriteDeps,
         menu: { repo: menuRepo, bindingRepo: navLocationBindingRepo },
-        ...buildContentPublishPorts({ formDefinitionRepo, contentTypeRepo, contentTypeIndexProvisioner }),
+        ...buildContentPublishPorts({
+          workspaceId: seededWorkspace.id,
+          postRepo,
+          formDefinitionRepo,
+          contentTypeRepo,
+          contentTypeIndexProvisioner,
+          taxonomyRepo,
+          termRepo,
+          entryTermRepo,
+          taxonomyRevisionRepo,
+          stampWatermark: noopStampWatermark,
+        }),
         "theme-files": {
           // S19 (S-F4) — same value `routeDeps.themesDir` (below) resolves to. See
           // `routes/types.ts`'s `themesDir` doc and `deps.ts`'s identical addition to this same

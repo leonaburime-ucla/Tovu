@@ -11,6 +11,7 @@ import { SqliteRedirectRepo, type RedirectsWriteDeps } from "#src/features/redir
 import { buildContentPublishPorts } from "#src/features/publish-content/content-ports";
 import { SqliteFormDefinitionRepo } from "#src/features/forms/repo.sqlite";
 import { SqliteContentTypeRepo } from "#src/features/content-types/repo.sqlite";
+import { SqliteTaxonomyRepo, SqliteTermRepo } from "#src/features/taxonomy/repo.sqlite";
 import { openContentDb } from "#src/platform/db/sqlite/content-db";
 import { SqliteMediaRepo } from "#src/platform/db/sqlite/media-repo.sqlite";
 
@@ -73,6 +74,8 @@ export function createSqlitePublishContentSeedHash(input: CreateSqlitePublishCon
       copyFileSync(input.seedDbPath, copyPath);
       const seedDb = openContentDb(copyPath);
       const redirectRepo = new SqliteRedirectRepo(seedDb);
+      const seedPostRepo = new SqlitePostRepo(seedDb);
+      const { workspaceId } = input;
       return {
         workspaceId: input.workspaceId,
         clock: input.clock,
@@ -84,7 +87,7 @@ export function createSqlitePublishContentSeedHash(input: CreateSqlitePublishCon
         // ({@link unusedBySeedInspect}) instead of a real instance, so a future handler that DOES
         // start reading one fails loudly here rather than silently hashing against the wrong store.
         ports: {
-          post: { repo: new SqlitePostRepo(seedDb) },
+          post: { repo: seedPostRepo },
           media: {
             repo: new SqliteMediaRepo(seedDb),
             assetBlobRepo: unusedBySeedInspect("media.assetBlobRepo"),
@@ -96,6 +99,13 @@ export function createSqlitePublishContentSeedHash(input: CreateSqlitePublishCon
             formDefinitionRepo: new SqliteFormDefinitionRepo(seedDb),
             contentTypeRepo: new SqliteContentTypeRepo(seedDb),
             contentTypeIndexProvisioner: unusedBySeedInspect("contentTypeIndexProvisioner"),
+            workspaceId,
+            postRepo: seedPostRepo,
+            taxonomyRepo: new SqliteTaxonomyRepo({ db: seedDb, workspaceId }),
+            termRepo: new SqliteTermRepo({ db: seedDb, workspaceId }),
+            entryTermRepo: unusedBySeedInspect("entryTermRepo"),
+            taxonomyRevisionRepo: unusedBySeedInspect("taxonomyRevisionRepo"),
+            stampWatermark: () => unusedBySeedInspect<{ call: never }>("stampWatermark").call,
           }),
         },
       };

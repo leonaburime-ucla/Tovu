@@ -7,6 +7,8 @@ import type { ContentDb } from "../../platform/db/sqlite/content-db.js";
 import { findOneBy } from "../../platform/db/sqlite/repo-helpers.js";
 import type {
   EntryTermRepoPort,
+  ImportableTaxonomyRepoPort,
+  ImportableTermRepoPort,
   Taxonomy,
   TaxonomyListPort,
   TaxonomyRepoPort,
@@ -50,6 +52,17 @@ import type {
 
 const TRASH_STATUS = "trash";
 
+/** Publish-content's taxonomy read (`publish-content.ts`): the full row, trashed ones included
+ *  (`status` = `"trash"`), so a precheck refuses a trashed destination instead of colliding. */
+export interface TaxonomyPublishReadPort {
+  findAnyById(id: string): Promise<Taxonomy | null>;
+}
+
+/** Publish-content's term read — see {@link TaxonomyPublishReadPort}. */
+export interface TermPublishReadPort {
+  findAnyById(id: string): Promise<Term | null>;
+}
+
 /** `taxonomies.status <> 'trash'` — the taxonomy read half of the rule (own marker only; a
  *  taxonomy has no parent to inherit trashed-ness from). @complexity O(1) to build. */
 function taxonomyIsLive(): SQL {
@@ -91,7 +104,7 @@ function toTerm(row: typeof terms.$inferSelect): Term {
   };
 }
 
-export class SqliteTaxonomyRepo implements TaxonomyRepoPort, TaxonomyListPort {
+export class SqliteTaxonomyRepo implements TaxonomyRepoPort, TaxonomyListPort, ImportableTaxonomyRepoPort, TaxonomyPublishReadPort {
   constructor(private readonly deps: { db: ContentDb; workspaceId: string }) {}
 
   async insert(row: Taxonomy): Promise<unknown> {
@@ -117,6 +130,27 @@ export class SqliteTaxonomyRepo implements TaxonomyRepoPort, TaxonomyListPort {
       [eq(taxonomies.workspaceId, this.deps.workspaceId), eq(taxonomies.id, id), taxonomyIsLive()],
       (row) => ({ id: row.id, hierarchical: row.hierarchical === 1 })
     );
+  }
+
+  /** `ImportableTaxonomyRepoPort` (`importTaxonomy`'s CAS read) — the full live row. */
+  async findByIdFull(id: string): Promise<Taxonomy | null> {
+    return findOneBy(this.deps.db, taxonomies, [eq(taxonomies.workspaceId, this.deps.workspaceId), eq(taxonomies.id, id), taxonomyIsLive()], toTaxonomy);
+  }
+
+  /** Publish-content's read (`publish-content.ts`): the full row even when trashed (`status` =
+   *  `"trash"`), so a precheck can refuse it instead of planning a create that would collide. */
+  async findAnyById(id: string): Promise<Taxonomy | null> {
+    return findOneBy(this.deps.db, taxonomies, [eq(taxonomies.workspaceId, this.deps.workspaceId), eq(taxonomies.id, id)], toTaxonomy);
+  }
+
+  /** `ImportableTaxonomyRepoPort` — live rows only, same no-revive guard as `SqliteTermRepo.update`. */
+  async update(row: Taxonomy): Promise<unknown> {
+    this.deps.db
+      .update(taxonomies)
+      .set({ name: row.name, hierarchical: row.hierarchical ? 1 : 0, status: row.status, updatedAt: row.updatedAt, version: row.version })
+      .where(and(eq(taxonomies.workspaceId, this.deps.workspaceId), eq(taxonomies.id, row.id), taxonomyIsLive()))
+      .run();
+    return row;
   }
 
   async list(): Promise<Taxonomy[]> {
@@ -189,7 +223,7 @@ export class SqliteTaxonomyRepo implements TaxonomyRepoPort, TaxonomyListPort {
   }
 }
 
-export class SqliteTermRepo implements TermRepoPort, TermListPort {
+export class SqliteTermRepo implements TermRepoPort, TermListPort, ImportableTermRepoPort, TermPublishReadPort {
   constructor(private readonly deps: { db: ContentDb; workspaceId: string }) {}
 
   async insert(row: Term): Promise<unknown> {
@@ -239,6 +273,16 @@ export class SqliteTermRepo implements TermRepoPort, TermListPort {
       [eq(terms.workspaceId, this.deps.workspaceId), eq(terms.id, id), termIsLive()],
       (row) => ({ id: row.id, taxonomyId: row.taxonomyId, name: row.name })
     );
+  }
+
+  /** `ImportableTermRepoPort` (`importTerm`'s CAS read) — the full live row. */
+  async findByIdFull(id: string): Promise<Term | null> {
+    return findOneBy(this.deps.db, terms, [eq(terms.workspaceId, this.deps.workspaceId), eq(terms.id, id), termIsLive()], toTerm);
+  }
+
+  /** Publish-content's read: the full row even when trashed (see `SqliteTaxonomyRepo.findAnyById`). */
+  async findAnyById(id: string): Promise<Term | null> {
+    return findOneBy(this.deps.db, terms, [eq(terms.workspaceId, this.deps.workspaceId), eq(terms.id, id)], toTerm);
   }
 
   async listByTaxonomy(params: { taxonomyId: string }): Promise<Term[]> {

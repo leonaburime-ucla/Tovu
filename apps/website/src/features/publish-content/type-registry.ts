@@ -4,6 +4,18 @@ import type { MenuRepoPort, NavLocationBindingRepoPort } from "#src/features/nav
 import type { RedirectsWriteDeps } from "#src/features/redirects/redirects";
 import type { FormDefinitionRepoPort } from "#src/features/forms/index";
 import type { ContentTypeListPort, ContentTypeRepoPort, IndexProvisionerPort } from "#src/features/content-types/index";
+import type {
+  ContentLookupPort,
+  EntryTermRepoPort,
+  ImportableTaxonomyRepoPort,
+  ImportableTermRepoPort,
+  TaxonomyListPort,
+  TaxonomyRepoPort,
+  TaxonomyRevisionRepoPort,
+  TermListPort,
+  TermRepoPort,
+} from "#src/features/taxonomy/index";
+import type { TaxonomyPublishReadPort, TermPublishReadPort } from "#src/features/taxonomy/repo.sqlite";
 import type { FileBlobIndexPort } from "./file-blob-index.js";
 import type { AuthorizeFn, ChangeSetRepoPort, ClockPort, OutboxPort } from "@jini-ai/cms/core";
 
@@ -124,6 +136,19 @@ export interface PublishContentPorts {
   // `content-ports.ts`'s `buildContentPublishPorts`, so a new line here is one edit there.
   readonly form: { readonly repo: FormDefinitionRepoPort };
   readonly "content-type": { readonly repo: ContentTypeRepoPort & ContentTypeListPort; readonly indexProvisioner: IndexProvisionerPort };
+  readonly taxonomy: TaxonomyPublishPorts;
+  readonly term: TaxonomyPublishPorts;
+}
+
+/** `taxonomy` and `term` share one bag: the Jini taxonomy write-service deps, minus the gateway
+ *  fields `PublishContentDeps` already carries. */
+export interface TaxonomyPublishPorts {
+  readonly taxonomies: TaxonomyRepoPort & TaxonomyListPort & ImportableTaxonomyRepoPort & TaxonomyPublishReadPort;
+  readonly terms: TermRepoPort & TermListPort & ImportableTermRepoPort & TermPublishReadPort;
+  readonly entryTerms: EntryTermRepoPort;
+  readonly revisions: TaxonomyRevisionRepoPort;
+  readonly stampWatermark: () => void;
+  readonly contentLookup: ContentLookupPort;
 }
 
 /**

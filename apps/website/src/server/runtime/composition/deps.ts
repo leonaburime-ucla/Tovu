@@ -1386,6 +1386,11 @@ export function createSqliteRouteDeps(
   // `entryTermRepo` and the new `entryTermReadRepo` field below — one concrete class satisfying two
   // differently-shaped dependency slots, rather than two separate connections to the same table.
   const sqliteEntryTermRepo = new SqliteEntryTermRepo({ db, workspaceId: workspaceId });
+  // Hoisted so `routeDeps` and the publish apply bag share these instances.
+  const taxonomyRepo = new SqliteTaxonomyRepo({ db, workspaceId: workspaceId });
+  const termRepo = new SqliteTermRepo({ db, workspaceId: workspaceId });
+  const taxonomyRevisionRepo = new SqliteTaxonomyRevisionRepo({ db, workspaceId: workspaceId });
+  const stampWatermark = sqliteStampWatermark(db);
   // SPEC-043/ADR-047 (widgets) — hoisted alongside `entryRepo` for the same reason: both the admin
   // `widgets` routes and the public site-render path (`routes/site/pages.ts` → `resolvePageWidgets`,
   // W-004) read/write against the SAME real tables, via the same `db` connection.
@@ -1695,7 +1700,18 @@ export function createSqliteRouteDeps(
         media: { repo: mediaRepo, assetBlobRepo, blobStore },
         redirect: redirectsWriteDeps,
         menu: { repo: menuRepo, bindingRepo: navLocationBindingRepo },
-        ...buildContentPublishPorts({ formDefinitionRepo, contentTypeRepo, contentTypeIndexProvisioner }),
+        ...buildContentPublishPorts({
+          workspaceId,
+          postRepo,
+          formDefinitionRepo,
+          contentTypeRepo,
+          contentTypeIndexProvisioner,
+          taxonomyRepo,
+          termRepo,
+          entryTermRepo: sqliteEntryTermRepo,
+          taxonomyRevisionRepo,
+          stampWatermark,
+        }),
         "theme-files": {
           // S19 (S-F4) — the theme-files handler's `apply()` stages/writes under this site's own
           // themes root, the SAME value `routeDeps.themesDir` (below) resolves to. See
@@ -1967,8 +1983,8 @@ export function createSqliteRouteDeps(
     contentTypeRepo,
     contentTypeIndexProvisioner,
     entryRepo,
-    taxonomyRepo: new SqliteTaxonomyRepo({ db, workspaceId: workspaceId }),
-    termRepo: new SqliteTermRepo({ db, workspaceId: workspaceId }),
+    taxonomyRepo,
+    termRepo,
     // `removeTerm` is WIDE (carries `"blocked"` — the `term` registry entry declares a
     // `TERM_HAS_CHILDREN` blocker); `removeTaxonomy` is narrowed the same way as `removeMenu`/
     // `removeFormSubmission` above (T6, step 3).
@@ -1980,8 +1996,8 @@ export function createSqliteRouteDeps(
     // separately-typed fields rather than one further-widened intersection).
     entryTermRepo: sqliteEntryTermRepo,
     entryTermReadRepo: sqliteEntryTermRepo,
-    taxonomyRevisionRepo: new SqliteTaxonomyRevisionRepo({ db, workspaceId: workspaceId }),
-    stampWatermark: sqliteStampWatermark(db),
+    taxonomyRevisionRepo,
+    stampWatermark,
     restorePointsRepo,
     dbOps,
     databaseIntrospection,

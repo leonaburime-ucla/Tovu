@@ -119,13 +119,15 @@ import type {
   TermRepoPort,
   TransactionalRepoPort,
   UnassignableEntryTermRepoPort,
+  ImportableTaxonomyRepoPort,
+  ImportableTermRepoPort,
 } from "../../features/taxonomy/index.js";
 import type { DisclosureWatermarkSourcePort } from "../../features/recovery/disclosure.js";
 import type { DeepLinkRestorePointLookupPort } from "../../features/recovery/deep-link.js";
 import type { GatewayDeps } from "../../contracts/core/gated-mutations/gateway.js";
 import type { LedgerAppendPort } from "../../features/database/gated-hooks.js";
 import type { MergeableEntryTermRepoPort } from "../../features/taxonomy/gated-hooks.js";
-import type { EntryTermReadPort } from "../../features/taxonomy/repo.sqlite.js";
+import type { EntryTermReadPort, TaxonomyPublishReadPort, TermPublishReadPort } from "../../features/taxonomy/repo.sqlite.js";
 import type {
   RemoveTermFn,
   RemoveTaxonomyFn,
@@ -567,10 +569,13 @@ export interface ContentTaxonomyDeps {
   /** Widened once more with `TaxonomyTrashReadPort` (`findForTrash`, a host-only addition — see
    *  `EntryTermReadPort`'s doc above for why these are declared directly against `repo.sqlite.js`/
    *  `trash-term.js` rather than folded into a certified Jini port) for `trashTaxonomy`'s read. */
-  taxonomyRepo: TaxonomyRepoPort & TaxonomyListPort & DeletableTaxonomyRepoPort & TransactionalRepoPort & TaxonomyTrashReadPort;
+  /** Widened for publish-content (`features/taxonomy/publish-content.ts`) with the id-preserving
+   *  import's `ImportableTaxonomyRepoPort` and the trash-inclusive `TaxonomyPublishReadPort`. */
+  taxonomyRepo: TaxonomyRepoPort & TaxonomyListPort & DeletableTaxonomyRepoPort & TransactionalRepoPort & TaxonomyTrashReadPort & ImportableTaxonomyRepoPort & TaxonomyPublishReadPort;
   /** Widened once more with `TermTrashReadPort` (`findForTrash`) for `trashTerm`'s read — same
    *  host-only-addition reasoning as `taxonomyRepo` above. */
-  termRepo: TermRepoPort & TermListPort & DeletableTermRepoPort & TermTrashReadPort;
+  /** Widened for publish-content the same way as `taxonomyRepo`. */
+  termRepo: TermRepoPort & TermListPort & DeletableTermRepoPort & TermTrashReadPort & ImportableTermRepoPort & TermPublishReadPort;
   /** Bound at composition to the generic trash pipeline (T6, trash parallel plan §2, owner
    *  decision 5) — `RemoveTermFn` is WIDE (carries `"blocked"`, the `TERM_HAS_CHILDREN` blocker);
    *  `RemoveTaxonomyFn` is narrowed, same reasoning as `removeWidget`/`removeMenu` elsewhere in

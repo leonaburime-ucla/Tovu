@@ -17,7 +17,9 @@
       "menu",
       "theme-files",
       "form",
-      "content-type"
+      "content-type",
+      "taxonomy",
+      "term"
     ],
     "capabilities": [
       "publish_content.read",
