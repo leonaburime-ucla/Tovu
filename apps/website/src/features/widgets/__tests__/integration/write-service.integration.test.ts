@@ -216,7 +216,8 @@ test("trashing hands the Trash the widget's title, slug and current version, and
       display: { title: "Racy", subtitle: created.slug },
       at: "2026-07-21T00:00:00.000Z",
       expectedVersion: created.version,
-      actor: { principalId: ACTOR.principalId },
+      // No `pluginId` on the input = a human trash; the AI marker stays null (d45f25e3f).
+      actor: { principalId: ACTOR.principalId, pluginId: null },
     },
   ]);
 });
