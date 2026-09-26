@@ -82,7 +82,7 @@ function makeDeps(itemPorts: ItemPorts | undefined, overrides: Partial<TestDeps>
   let clockTick = 0;
   return {
     workspaceId: WORKSPACE_ID,
-    postRepo: undefined as unknown as PublishContentDeps["postRepo"],
+    ports: {},
     clock: { nowIso: () => `2026-09-25T00:00:${String(clockTick++).padStart(2, "0")}.000Z` },
     idGen: { newId: () => "unused-in-these-tests" },
     authorize: async () => ({ allowed: true, reason: "test-always-allow" }),

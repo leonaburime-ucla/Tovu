@@ -132,20 +132,24 @@ function makeHarness(
 
   const publishContentDeps: PublishContentDeps = {
     workspaceId: WORKSPACE_ID,
-    postRepo,
     clock,
     idGen: makeCounterIdGen("cs"),
     outbox,
     changeSets,
     authorize,
-    // Required by `features/post/publish-content.ts`'s apply guard — its rollback restores through
-    // `restorePostForward`, which drops the Trash index row when the write it undoes was a trash.
-    // An import never trashes, so this never fires here.
-    forgetRemovedPost: async () => {},
-    // S5 — `retire()`'s own guard requires this too (mirrors `post/__tests__/publish-content.test.ts`'s
-    // `makeApplyDeps`), bound to the SAME repo instance every other test in this file already reads/
-    // writes through. Harmless for every test that never retires anything.
-    removePost: removeVia(postRepo),
+    ports: {
+      post: {
+        repo: postRepo,
+        // Required by `features/post/publish-content.ts`'s apply guard — its rollback restores through
+        // `restorePostForward`, which drops the Trash index row when the write it undoes was a trash.
+        // An import never trashes, so this never fires here.
+        forgetRemoved: async () => {},
+        // S5 — `retire()`'s own guard requires this too (mirrors `post/__tests__/publish-content.test.ts`'s
+        // `makeApplyDeps`), bound to the SAME repo instance every other test in this file already reads/
+        // writes through. Harmless for every test that never retires anything.
+        remove: removeVia(postRepo),
+      },
+    },
   };
 
   const applyPort = createPublishContentApplyPort({
@@ -899,17 +903,19 @@ test("a media row blocked at apply time downgrades that ONE row and the rest of 
 
   const publishContentDeps: PublishContentDeps = {
     workspaceId: WORKSPACE_ID,
-    postRepo,
     clock,
     idGen: makeCounterIdGen("cs"),
     outbox,
     changeSets,
     authorize: async () => ({ allowed: true, reason: "test-always-allow" }),
-    // See the harness bag above for why `apply()` requires this.
-    forgetRemovedPost: async () => {},
-    mediaRepo,
-    assetBlobRepo,
-    blobStore,
+    ports: {
+      post: {
+        repo: postRepo,
+        // See the harness bag above for why `apply()` requires this.
+        forgetRemoved: async () => {},
+      },
+      media: { repo: mediaRepo, assetBlobRepo, blobStore },
+    },
   };
   const applyPort = createPublishContentApplyPort({
     workspaceId: WORKSPACE_ID,
@@ -1127,15 +1133,15 @@ function makeMenuHarness(rows: PostRecord[] = [], options: { menuRepo?: MenuRepo
 
   const publishContentDeps: PublishContentDeps = {
     workspaceId: WORKSPACE_ID,
-    postRepo,
     clock,
     idGen: makeCounterIdGen("cs"),
     outbox,
     changeSets,
     authorize,
-    forgetRemovedPost: async () => {},
-    removePost: removeVia(postRepo),
-    ...(wireMenuDeps ? { menuRepo, navLocationBindingRepo } : {}),
+    ports: {
+      post: { repo: postRepo, forgetRemoved: async () => {}, remove: removeVia(postRepo) },
+      ...(wireMenuDeps ? { menu: { repo: menuRepo, bindingRepo: navLocationBindingRepo } } : {}),
+    },
   };
 
   const applyPort = createPublishContentApplyPort({

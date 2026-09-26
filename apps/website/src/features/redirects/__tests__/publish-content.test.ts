@@ -58,10 +58,9 @@ function makeWriteDeps(opts: { redirectAllowlist?: string[] } = {}): RedirectsWr
 function makePublishDeps(redirectsWriteDeps?: RedirectsWriteDeps): PublishContentDeps {
   return {
     workspaceId: WORKSPACE_ID,
-    postRepo: undefined as unknown as PublishContentDeps["postRepo"],
     clock: { nowIso: () => "2026-09-24T00:00:00.000Z" },
     idGen: { newId: () => "unused-in-these-tests" },
-    redirectsWriteDeps,
+    ports: redirectsWriteDeps === undefined ? {} : { redirect: redirectsWriteDeps },
   };
 }
 
@@ -180,7 +179,7 @@ test("precheck() rejects a loop with the exact chokepoint message text", async (
 test("precheck() reports a message rather than throwing when redirectsWriteDeps is absent", async () => {
   const handler = contributeRedirectPublish().build(makePublishDeps(undefined));
   const reason = await handler.precheck(packedEntity("exact:/x", {}));
-  assert.match(reason ?? "", /redirectsWriteDeps/);
+  assert.match(reason ?? "", /no redirect port wired/);
 });
 
 // ---------------------------------------------------------------------------
@@ -253,7 +252,7 @@ test("apply() throws loudly (not a row downgrade) when redirectsWriteDeps is abs
         principalId: "operator-1",
         idempotencyKey: "idem-3",
       }),
-    /redirectsWriteDeps/
+    /requires PublishContentDeps\.ports\.redirect/
   );
 });
 

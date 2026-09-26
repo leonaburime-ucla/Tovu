@@ -5,7 +5,7 @@ import { createRevertRegistry, InMemoryChangeSetRepo, revertChangeSet, RevertCon
 import { InMemoryOutbox } from "#src/contracts/core/events/index";
 import type { PublishContentDeps } from "#src/features/publish-content/type-registry";
 
-import { InMemoryMenuRepo, type MenuRepoPort, type NavMenuEntry } from "../index.js";
+import { InMemoryMenuRepo, type MenuRepoPort, type NavLocationBindingRepoPort, type NavMenuEntry } from "../index.js";
 import { contributeMenusPublish } from "../publish-content.js";
 import { registerMenuReverters } from "../reverters.js";
 
@@ -50,14 +50,13 @@ function makeRepointDeps(menuRepo: MenuRepoPort): PublishContentDeps & { changeS
   const outbox = new InMemoryOutbox();
   return {
     workspaceId: WORKSPACE_ID,
-    postRepo: undefined as unknown as PublishContentDeps["postRepo"],
     clock: { nowIso: () => "2026-09-24T00:00:00.000Z" },
     idGen: (() => {
       let n = 0;
       return { newId: () => `generated-${++n}` };
     })(),
     outbox,
-    menuRepo,
+    ports: { menu: { repo: menuRepo, bindingRepo: undefined as unknown as NavLocationBindingRepoPort } },
     changeSets: new InMemoryChangeSetRepo([], [], outbox),
     authorize: async () => ({ allowed: true, reason: "test-always-allow" }),
   };

@@ -57,12 +57,8 @@ function toolDeps(overrides: Partial<PublishContentToolDeps> = {}): PublishConte
     authorize: async () => ({ allowed: true }),
     clock: { nowIso: () => "2026-09-19T00:00:00.000Z" },
     idGen: { newId: () => "id-1" },
-    postRepo: null as never,
     pluginBeforeSaveHook: undefined as never,
     outbox: null as never,
-    mediaRepo: null as never,
-    assetBlobRepo: null as never,
-    blobStore: null as never,
     workspaceRepo: { findById: async () => ({ name: "Test Site" }) },
     publishContentPeerRepo: {
       listByWorkspace: async () => rows,

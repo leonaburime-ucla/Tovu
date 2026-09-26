@@ -58,11 +58,13 @@ function makePost(overrides: Partial<PostRecord> = {}): PostRecord {
 }
 
 function makeDeps(rows: PostRecord[]) {
+  const postRepo = new InMemoryPostRepo(rows);
   return {
     workspaceId: WORKSPACE_ID,
-    postRepo: new InMemoryPostRepo(rows),
+    postRepo,
     clock: makeClock(),
     idGen: makeIdGen(),
+    ports: { post: { repo: postRepo } },
   };
 }
 
@@ -72,18 +74,21 @@ function makeDeps(rows: PostRecord[]) {
 function makeApplyDeps(rows: PostRecord[]) {
   const outbox = new InMemoryOutbox();
   const base = makeDeps(rows);
+  // Required by `apply()`'s guard: its rollback restores through `restorePostForward`, which
+  // needs the Trash-index forget. Nothing in `apply()`'s own tests below trashes a post, so it
+  // never fires there — `retire()`'s tests (S4) are what actually exercise it.
+  const forgetRemovedPost = async () => {};
+  // S4 — `retire()`'s guard requires this too, bound to the SAME repo instance `apply()`'s tests
+  // already read/write through (mirrors `retire-post.test.ts`'s own `removeVia(repo)` double).
+  const removePost = removeVia(base.postRepo);
   return {
     ...base,
     outbox,
     changeSets: new InMemoryChangeSetRepo([], [], outbox),
     authorize: async () => ({ allowed: true, reason: "test-always-allow" }),
-    // Required by `apply()`'s guard: its rollback restores through `restorePostForward`, which
-    // needs the Trash-index forget. Nothing in `apply()`'s own tests below trashes a post, so it
-    // never fires there — `retire()`'s tests (S4) are what actually exercise it.
-    forgetRemovedPost: async () => {},
-    // S4 — `retire()`'s guard requires this too, bound to the SAME repo instance `apply()`'s tests
-    // already read/write through (mirrors `retire-post.test.ts`'s own `removeVia(repo)` double).
-    removePost: removeVia(base.postRepo),
+    forgetRemovedPost,
+    removePost,
+    ports: { post: { repo: base.postRepo, forgetRemoved: forgetRemovedPost, remove: removePost } },
   };
 }
 
@@ -594,7 +599,8 @@ test("retire() refuses a target whose live content no longer matches the planned
 
 test("retire() throws when removePost is not wired — never silently no-ops", async () => {
   const holder = makePost({ id: "post-1", slug: "about" });
-  const deps = { ...makeApplyDeps([holder]), removePost: undefined };
+  const base = makeApplyDeps([holder]);
+  const deps = { ...base, ports: { post: { ...base.ports.post, remove: undefined } } };
   const handler = contributePostPublish().build(deps);
 
   await assert.rejects(
@@ -604,6 +610,6 @@ test("retire() throws when removePost is not wired — never silently no-ops", a
         principalId: "operator-1",
         idempotencyKey: "retire-3",
       }),
-    /requires PublishContentDeps.changeSets\/authorize\/outbox\/forgetRemovedPost\/removePost/
+    /requires PublishContentDeps.changeSets\/authorize\/outbox and ports\.post\.repo\/forgetRemoved\/remove/
   );
 });

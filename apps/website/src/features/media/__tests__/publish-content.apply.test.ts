@@ -119,16 +119,12 @@ async function makeFixture(
   let n = 0;
   const deps: PublishContentDeps = {
     workspaceId: WORKSPACE_ID,
-    // `apply()` never reads `postRepo`; a bare stub keeps this fixture honest about what media needs.
-    postRepo: undefined as unknown as PublishContentDeps["postRepo"],
     clock: { nowIso: () => "2026-09-18T12:00:00.000Z" },
     idGen: { newId: () => `generated-id-${++n}` },
     outbox,
     changeSets,
     authorize: async () => ({ allowed: true, reason: "test-always-allow" }),
-    mediaRepo,
-    assetBlobRepo,
-    blobStore,
+    ports: { media: { repo: mediaRepo, assetBlobRepo, blobStore } },
   };
   return { deps, mediaRepo, assetBlobRepo, blobStore, changeSets };
 }
@@ -461,7 +457,7 @@ for (const [label, makeRepo] of [
     await stageBlobBytes(fixture.blobStore, PHOTO_SHA256, PHOTO_BYTES);
 
     const gate = gateBlobGets(fixture.blobStore, 2);
-    const handler = handlerFor({ ...fixture.deps, blobStore: gate.gated });
+    const handler = handlerFor({ ...fixture.deps, ports: { media: { ...fixture.deps.ports.media!, blobStore: gate.gated } } });
 
     const a = handler.apply({
       entity: packedFrom(makeMediaRecord({ title: "Title From A" })),
@@ -509,7 +505,7 @@ for (const [label, makeRepo] of [
     await stageBlobBytes(fixture.blobStore, PHOTO_SHA256, PHOTO_BYTES);
 
     const gate = gateBlobGets(fixture.blobStore, 2);
-    const handler = handlerFor({ ...fixture.deps, blobStore: gate.gated });
+    const handler = handlerFor({ ...fixture.deps, ports: { media: { ...fixture.deps.ports.media!, blobStore: gate.gated } } });
 
     const a = handler.apply({
       entity: packedFrom(makeMediaRecord({ title: "Title From A" })),
@@ -557,12 +553,12 @@ test("apply() throws a named error when changeSets/authorize/outbox are not wire
   );
 });
 
-test("apply() throws a named error when mediaRepo/assetBlobRepo/blobStore are not wired", async () => {
+test("apply() throws a named error when ports.media is not wired", async () => {
   const fixture = await makeFixture();
-  const deps: PublishContentDeps = { ...fixture.deps, mediaRepo: undefined, assetBlobRepo: undefined, blobStore: undefined };
+  const deps: PublishContentDeps = { ...fixture.deps, ports: {} };
   await assert.rejects(
     () => handlerFor(deps).apply({ entity: packedFrom(makeMediaRecord()), expectedVersion: undefined, principalId: OPERATOR_ID }),
-    /media\.apply\(\) requires PublishContentDeps\.mediaRepo\/assetBlobRepo\/blobStore.*apply-loop\.ts/s
+    /media\.apply\(\) requires PublishContentDeps\.ports\.media.*apply-loop\.ts/s
   );
 });
 

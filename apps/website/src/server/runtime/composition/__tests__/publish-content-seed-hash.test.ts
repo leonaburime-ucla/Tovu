@@ -33,14 +33,14 @@ function hydrateLive(t: { after(fn: () => void): void }) {
   const livePath = join(dir, "content.db");
   copyFileSync(SEED, livePath);
   const db = openContentDb(livePath);
+  const menuRepo = new SqliteMenuRepo(db);
   const liveDeps: PublishContentDeps = {
     workspaceId: WORKSPACE,
-    postRepo: new SqlitePostRepo(db),
     clock,
     idGen,
-    menuRepo: new SqliteMenuRepo(db),
+    ports: { post: { repo: new SqlitePostRepo(db) }, menu: { repo: menuRepo, bindingRepo: undefined as never } },
   };
-  return { db, liveDeps, handlers: buildPublishContentCatalog(liveDeps).handlerByType };
+  return { db, liveDeps, menuRepo, handlers: buildPublishContentCatalog(liveDeps).handlerByType };
 }
 
 function seedLookup() {
@@ -71,12 +71,12 @@ test("seed lookup: an untouched live header-nav and page hash exactly as the shi
 test("seed lookup: a live row edited since seed no longer matches, and an id the seed lacks answers null", async (t) => {
   resetPublishContentContributorsForTests();
   installFirstPartyPublishContentTypes();
-  const { liveDeps, handlers } = hydrateLive(t);
+  const { menuRepo, handlers } = hydrateLive(t);
   const getSeedHash = seedLookup();
 
-  const menu = await liveDeps.menuRepo!.findById({ workspaceId: WORKSPACE, id: "menu-header-nav" });
+  const menu = await menuRepo.findById({ workspaceId: WORKSPACE, id: "menu-header-nav" });
   assert.ok(menu);
-  await liveDeps.menuRepo!.save({ ...menu, title: `${menu.title} (edited on live)`, version: menu.version + 1 });
+  await menuRepo.save({ ...menu, title: `${menu.title} (edited on live)`, version: menu.version + 1 });
   const edited = await handlers.get("menu")!.inspect("menu-header-nav");
 
   assert.notEqual(await getSeedHash({ entityType: "menu", entityId: "menu-header-nav" }), edited!.hash);

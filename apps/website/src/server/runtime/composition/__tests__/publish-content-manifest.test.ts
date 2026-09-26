@@ -95,15 +95,12 @@ test("the registered media contributor's apply() is a real write path, not a thr
   let n = 0;
   const deps: PublishContentDeps = {
     workspaceId,
-    postRepo: undefined as unknown as PublishContentDeps["postRepo"],
     clock: { nowIso: () => "2026-09-18T12:00:00.000Z" },
     idGen: { newId: () => `generated-id-${++n}` },
     outbox,
     changeSets: new InMemoryChangeSetRepo([], [], outbox),
     authorize: async () => ({ allowed: true, reason: "test-always-allow" }),
-    mediaRepo,
-    assetBlobRepo: new InMemoryAssetBlobRepo(),
-    blobStore,
+    ports: { media: { repo: mediaRepo, assetBlobRepo: new InMemoryAssetBlobRepo(), blobStore } },
   };
 
   const { changeSetId } = await contributor.build(deps).apply({
@@ -163,10 +160,9 @@ test("the registered redirect contributor's apply() is a real write path, not a 
 
   const deps: PublishContentDeps = {
     workspaceId,
-    postRepo: undefined as unknown as PublishContentDeps["postRepo"],
     clock: { nowIso: () => "2026-09-24T00:00:00.000Z" },
     idGen: { newId: () => "unused" },
-    redirectsWriteDeps,
+    ports: { redirect: redirectsWriteDeps },
   };
 
   const { changeSetId } = await contributor.build(deps).apply({
@@ -209,12 +205,10 @@ test("the registered menu contributor's apply() is a real write path, not a thro
   const outbox = new InMemoryOutbox();
   const deps: PublishContentDeps = {
     workspaceId,
-    postRepo: undefined as unknown as PublishContentDeps["postRepo"],
     clock: { nowIso: () => "2026-09-24T12:00:00.000Z" },
     idGen: { newId: () => "generated-menu-event-1" },
     outbox,
-    menuRepo,
-    navLocationBindingRepo,
+    ports: { menu: { repo: menuRepo, bindingRepo: navLocationBindingRepo } },
   };
 
   const record = {
@@ -270,14 +264,15 @@ test("the registered theme-files contributor's apply() is a real write path, not
     let n = 0;
     const deps: PublishContentDeps = {
       workspaceId,
-      postRepo: undefined as unknown as PublishContentDeps["postRepo"],
       clock: { nowIso: () => "2026-09-24T12:00:00.000Z" },
       idGen: { newId: () => `generated-id-${++n}` },
       outbox,
       changeSets: new InMemoryChangeSetRepo([], [], outbox),
       authorize: async () => ({ allowed: true, reason: "test-always-allow" }),
-      blobStore,
-      themesDir: destThemes,
+      ports: {
+        media: { repo: undefined as never, assetBlobRepo: undefined as never, blobStore },
+        "theme-files": { themesDir: destThemes },
+      },
     };
 
     const { changeSetId } = await contributor.build(deps).apply({

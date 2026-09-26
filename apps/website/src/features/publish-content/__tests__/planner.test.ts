@@ -967,7 +967,7 @@ test("real post contributor: created + byte-identical destination", async () => 
     state: newPostState,
   };
   const deps: PlanImportDeps = {
-    publishContentDeps: { workspaceId, postRepo: repo, clock: { nowIso: () => "2026-09-18T00:00:00.000Z" }, idGen: { newId: () => "unused" } },
+    publishContentDeps: { workspaceId, clock: { nowIso: () => "2026-09-18T00:00:00.000Z" }, idGen: { newId: () => "unused" }, ports: { post: { repo } } },
     getBaseline: async () => null,
     hasBlob: async () => true,
   };
@@ -1012,7 +1012,7 @@ test("real post contributor: blocked on a genuine slug collision against a DIFFE
     state: incomingState,
   };
   const deps: PlanImportDeps = {
-    publishContentDeps: { workspaceId, postRepo: repo, clock: { nowIso: () => "2026-09-18T00:00:00.000Z" }, idGen: { newId: () => "unused" } },
+    publishContentDeps: { workspaceId, clock: { nowIso: () => "2026-09-18T00:00:00.000Z" }, idGen: { newId: () => "unused" }, ports: { post: { repo } } },
     getBaseline: async () => null,
     hasBlob: async () => true,
   };

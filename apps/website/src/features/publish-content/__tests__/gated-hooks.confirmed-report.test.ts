@@ -161,7 +161,7 @@ test("publish-content applies the report the gateway verified, not one re-derive
     actorId: ACTOR_ID,
     clock,
     idGen,
-    publishContentDeps: { workspaceId: WORKSPACE_ID, postRepo: new InMemoryPostRepo(), clock, idGen },
+    publishContentDeps: { workspaceId: WORKSPACE_ID, clock, idGen, ports: { post: { repo: new InMemoryPostRepo() } } },
     bundleRepo,
     baselineRepo,
     blobStore: { exists: async () => true },

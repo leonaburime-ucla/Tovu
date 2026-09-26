@@ -110,14 +110,17 @@ async function makeFixture(options: { sourceFiles?: Record<string, string>; dest
   let n = 0;
   const deps: PublishContentDeps = {
     workspaceId: WORKSPACE_ID,
-    postRepo: undefined as unknown as PublishContentDeps["postRepo"],
     clock: { nowIso: () => "2026-09-24T12:00:00.000Z" },
     idGen: { newId: () => `generated-id-${++n}` },
     outbox,
     changeSets,
     authorize: async () => ({ allowed: true, reason: "test-always-allow" }),
-    blobStore,
-    themesDir: destThemes,
+    ports: {
+      // `blobStore` lives on `ports.media` — theme's own port has no store of its own; see
+      // `theme/publish-content.ts`'s comment above `buildHandler`.
+      media: { repo: undefined as never, assetBlobRepo: undefined as never, blobStore },
+      "theme-files": { themesDir: destThemes },
+    },
   };
   return { sourceThemes, destThemes, blobStore, changeSets, deps };
 }
@@ -405,7 +408,7 @@ test("round trip: a theme edited on live plans 'conflict' offered as an overwrit
  *  running site to re-read its themes — the renderer serves `DiscoveredTheme.partials` from memory. */
 function recordReloads(fixture: Fixture): string[] {
   const seen: string[] = [];
-  (fixture.deps as { onThemeTreeReplaced?: () => Promise<void> }).onThemeTreeReplaced = async () => {
+  (fixture.deps.ports["theme-files"] as { onReplaced?: () => Promise<void> }).onReplaced = async () => {
     seen.push(await readFile(path.join(fixture.destThemes, "static/basic/render/partials/nav.html"), "utf8").catch(() => "<missing>"));
   };
   return seen;

@@ -37,12 +37,18 @@ function makePublishDeps(input: {
 }): PublishContentDeps {
   return {
     workspaceId: WORKSPACE_ID,
-    postRepo: undefined as unknown as PublishContentDeps["postRepo"],
     clock: input.clock ?? { nowIso: () => "2026-09-24T00:00:00.000Z" },
     idGen: input.idGen ?? { newId: () => "unused-in-these-tests" },
     outbox: input.outbox ?? new InMemoryOutbox(),
-    menuRepo: input.menuRepo,
-    navLocationBindingRepo: input.navLocationBindingRepo,
+    ports: {
+      menu:
+        input.menuRepo === undefined && input.navLocationBindingRepo === undefined
+          ? undefined
+          : {
+              repo: input.menuRepo as MenuRepoPort,
+              bindingRepo: input.navLocationBindingRepo as NavLocationBindingRepoPort,
+            },
+    },
   };
 }
 

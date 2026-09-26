@@ -36,9 +36,10 @@ const IMPORTING_OPERATOR = "operator-running-the-import";
 
 function makeDeps(rows: PostRecord[]) {
   const outbox = new InMemoryOutbox();
+  const postRepo = new InMemoryPostRepo(rows);
   return {
     workspaceId: WORKSPACE_ID,
-    postRepo: new InMemoryPostRepo(rows),
+    postRepo,
     clock: { nowIso: () => "2026-09-19T12:00:00.000Z" },
     idGen: (() => {
       let n = 0;
@@ -50,6 +51,7 @@ function makeDeps(rows: PostRecord[]) {
     // Required by `apply()`'s guard: its rollback restores through `restorePostForward`, which
     // needs the Trash-index forget. Nothing in this file trashes a post, so it never fires.
     forgetRemovedPost: async () => {},
+    ports: { post: { repo: postRepo, forgetRemoved: async () => {} } },
   };
 }
 

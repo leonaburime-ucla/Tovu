@@ -142,10 +142,9 @@ test("the handler's listSkipped() reports a whole-tree refusal by its exact Skip
 
     const handler = contributeThemeFilesPublish().build({
       workspaceId: "ws1",
-      postRepo: undefined as never,
       clock: { nowIso: () => "2026-09-25T00:00:00.000Z" },
       idGen: { newId: () => "id1" },
-      themesDir,
+      ports: { "theme-files": { themesDir } },
     });
     const skipped = await handler.listSkipped!();
     assert.equal(skipped.length, 1);
@@ -164,9 +163,9 @@ test("the handler's listSkipped() reports a whole-tree refusal by its exact Skip
 test("the handler's listSkipped() is empty when there is no themesDir configured", async () => {
   const handler = contributeThemeFilesPublish().build({
     workspaceId: "ws1",
-    postRepo: undefined as never,
     clock: { nowIso: () => "2026-09-25T00:00:00.000Z" },
     idGen: { newId: () => "id1" },
+    ports: {},
   });
   assert.deepEqual(await handler.listSkipped!(), []);
 });
