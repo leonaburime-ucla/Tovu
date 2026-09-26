@@ -20,7 +20,9 @@
       "content-type",
       "taxonomy",
       "term",
-      "collection-entry"
+      "collection-entry",
+      "widget",
+      "widget-area"
     ],
     "capabilities": [
       "publish_content.read",

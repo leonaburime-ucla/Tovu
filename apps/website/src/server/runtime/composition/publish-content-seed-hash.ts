@@ -108,6 +108,8 @@ export function createSqlitePublishContentSeedHash(input: CreateSqlitePublishCon
             taxonomyRevisionRepo: unusedBySeedInspect("taxonomyRevisionRepo"),
             stampWatermark: () => unusedBySeedInspect<{ call: never }>("stampWatermark").call,
             entryRepo: new SqliteEntryRepo(seedDb),
+            entryRefsRepo: unusedBySeedInspect("entryRefsRepo"),
+            widgetBindingRepo: unusedBySeedInspect("widgetBindingRepo"),
           }),
         },
       };

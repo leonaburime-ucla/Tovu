@@ -16,7 +16,9 @@ import type {
   TermRepoPort,
 } from "#src/features/taxonomy/index";
 import type { TaxonomyPublishReadPort, TermPublishReadPort } from "#src/features/taxonomy/repo.sqlite";
-import type { EntryRepoPort } from "#src/features/entries/index";
+import type { EntryListPort, EntryRepoPort } from "#src/features/entries/index";
+import type { EntryRefsRepoPort } from "#src/contracts/core/entry-refs/ports";
+import type { WidgetRegionBindingRepoPort } from "#src/features/widgets/ports";
 import type { EntryListExcludingTypesPort } from "#src/features/entries/public-list";
 import type { EntryPublishReadPort } from "#src/features/entries/repo.sqlite";
 import type { FileBlobIndexPort } from "./file-blob-index.js";
@@ -142,6 +144,16 @@ export interface PublishContentPorts {
   readonly taxonomy: TaxonomyPublishPorts;
   readonly term: TaxonomyPublishPorts;
   readonly "collection-entry": EntryPublishPorts;
+  readonly widget: WidgetPublishPorts;
+  readonly "widget-area": WidgetPublishPorts;
+}
+
+/** `widget` and `widget-area` share one bag: the widgets write-service deps minus the gateway fields. */
+export interface WidgetPublishPorts {
+  readonly entries: EntryRepoPort & EntryListPort & EntryPublishReadPort;
+  readonly contentTypes: ContentTypeRepoPort;
+  readonly entryRefs: EntryRefsRepoPort;
+  readonly bindings: WidgetRegionBindingRepoPort;
 }
 
 /** `collection-entry`'s bag: the entry repo (trash-inclusive read) and the owning-type lookup. */

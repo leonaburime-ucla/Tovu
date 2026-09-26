@@ -909,6 +909,8 @@ export function createRouteDeps(options: CreateRouteDepsOptions = {}): Newslette
           taxonomyRevisionRepo,
           stampWatermark: noopStampWatermark,
           entryRepo,
+          entryRefsRepo,
+          widgetBindingRepo,
         }),
         "theme-files": {
           // S19 (S-F4) — same value `routeDeps.themesDir` (below) resolves to. See

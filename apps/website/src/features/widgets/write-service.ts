@@ -31,6 +31,7 @@ import {
   VersionConflictError,
   toEntryOutbox,
   createEntry,
+  importEntry,
   updateEntry,
   type EntryListPort,
   type EntryRecord,
@@ -259,6 +260,77 @@ export async function updateWidgetInstance(required: UpdateWidgetInstanceRequire
       throw result.error;
     }
 
+    return { instance: toWidgetInstanceEntry(result.value.entry) };
+  });
+}
+
+export interface ImportWidgetInstanceInput {
+  readonly workspaceId: UUID;
+  readonly actor: { readonly principalId: UUID };
+  /** The source's own id, kept so a publish round trip lands on the same row (and placements that
+   *  name it still resolve). */
+  readonly id: UUID;
+  readonly slug: string;
+  readonly title: string;
+  readonly widgetType: WidgetTypeKey;
+  readonly config: Record<string, unknown>;
+  /** `undefined` = the row must not exist yet; a number = it must exist at exactly this version. */
+  readonly expectedVersion: number | undefined;
+}
+
+export interface ImportWidgetInstanceRequired {
+  deps: WidgetWriteServiceDeps;
+  input: ImportWidgetInstanceInput;
+}
+
+/**
+ * Publish-content's widget write: create-or-update at a caller-given id, with the same permission,
+ * type-registration and config checks as {@link createWidgetInstance}/{@link updateWidgetInstance},
+ * through Jini's `importEntry` (the id-keeping chokepoint). Always writes an `active` instance.
+ */
+export async function importWidgetInstance(required: ImportWidgetInstanceRequired): Promise<{ instance: WidgetInstanceEntry }> {
+  const { deps, input } = required;
+
+  await requireWidgetPermission({
+    authorize: deps.authorize,
+    actor: input.actor,
+    workspaceId: input.workspaceId,
+    permission: input.expectedVersion === undefined ? "widgets.create" : "widgets.update",
+  });
+
+  const registration = findWidgetTypeRegistration(input.widgetType);
+  if (!registration) {
+    throw new WidgetTypeUnregisteredError(`widget type '${input.widgetType}' is not registered (REQ-03)`, input.widgetType);
+  }
+  const validation = validateWidgetConfig({ schema: registration.configSchema, config: input.config });
+  if (!validation.valid) {
+    throw new WidgetConfigValidationError(`config for widget type '${input.widgetType}' failed schema validation (REQ-02)`, validation.fieldErrors);
+  }
+
+  await ensureWidgetContentTypesRegistered({ deps, workspaceId: input.workspaceId });
+
+  return withEntryLock(`${input.workspaceId}::${input.id}`, async () => {
+    const current = await deps.entryRepo.findById({ workspaceId: input.workspaceId, id: input.id });
+    const result = await importEntry({
+      deps: {
+        ...entriesWriteDeps(deps, input.workspaceId),
+        onWritten: (entry) => extractAndStoreInstanceRefs(deps, input.workspaceId, entry),
+      },
+      input: {
+        actorId: input.actor.principalId,
+        workspaceId: input.workspaceId,
+        id: input.id,
+        type: WIDGET_CONTENT_TYPE,
+        slug: input.slug,
+        title: input.title,
+        status: current?.status ?? "draft",
+        fieldsJson: buildWidgetInstanceFieldsJson({ widgetType: input.widgetType, config: input.config, status: "active" }),
+        publishedAt: current?.publishedAt ?? null,
+        expectedVersion: input.expectedVersion,
+        owner: WIDGET_FIELD_NAMESPACE,
+      },
+    });
+    if (!result.ok) throw result.error;
     return { instance: toWidgetInstanceEntry(result.value.entry) };
   });
 }

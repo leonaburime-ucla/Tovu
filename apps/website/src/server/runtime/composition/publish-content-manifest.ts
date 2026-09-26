@@ -8,6 +8,7 @@ import { registerPublishContentContributor } from "#src/features/publish-content
 import { contributeTaxonomyPublish, contributeTermPublish } from "#src/features/taxonomy/publish-content";
 import { contributeRedirectPublish } from "#src/features/redirects/publish-content";
 import { contributeThemeFilesPublish } from "#src/features/theme/publish-content";
+import { contributeWidgetAreaPublish, contributeWidgetPublish } from "#src/features/widgets/publish-content";
 
 /**
  * @file Task 2 of the publish-content (Publish Content) feature — the composition-root wiring
@@ -56,4 +57,6 @@ export function installFirstPartyPublishContentTypes(): void {
   registerPublishContentContributor(contributeTaxonomyPublish());
   registerPublishContentContributor(contributeTermPublish());
   registerPublishContentContributor(contributeCollectionEntryPublish());
+  registerPublishContentContributor(contributeWidgetPublish());
+  registerPublishContentContributor(contributeWidgetAreaPublish());
 }
