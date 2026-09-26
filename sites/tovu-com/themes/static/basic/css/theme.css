@@ -444,6 +444,11 @@ section.band { padding-block: 72px; border-top: 1px solid var(--border); }
 .post-detail-body ul, .post-detail-body ol { margin: 0 0 18px 22px; }
 .post-detail-body li { margin-bottom: 6px; }
 .post-detail-body blockquote { border-left: 2px solid var(--border-strong); padding-left: 20px; margin: 24px 0; color: var(--muted); font-style: italic; }
+/* Docs callouts (`.qs-note`, `.dx-note`): the pages' own inline <style> paints them
+   `var(--surface-2)` grey. Override once here with a faint accent tint so the text reads at full
+   contrast in both modes; `:root` lifts specificity over the later in-page rule. */
+:root :is(.qs-note, .dx-note) { background: color-mix(in oklch, var(--accent) 7%, var(--bg)); color: var(--fg); }
+:root :is(.qs-note, .dx-note) p { color: inherit; }
 .post-detail-body code { font: 13px/1 var(--font-mono); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; }
 /* `font` (13px/1.5) set here, on `pre` itself, not just on `pre code` below — `pre` is the block
    box that lays out the forced-newline lines, and CSS gives every line box a "strut" sized off the
