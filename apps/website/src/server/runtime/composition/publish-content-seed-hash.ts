@@ -40,6 +40,25 @@ export interface CreateSqlitePublishContentSeedHashInput {
 }
 
 /**
+ * A port {@link PublishContentPorts} requires present but which this lookup's own callers
+ * (`inspect()` on every registered handler) never actually invoke — `media.assetBlobRepo`/
+ * `.blobStore` and `menu.bindingRepo` fall in this bucket (see the field comments above the ports
+ * bag below for which handler reads which field). Throws loudly if that assumption is ever wrong,
+ * rather than silently returning wrong data.
+ * @complexity O(1).
+ */
+function unusedBySeedInspect<T extends object>(label: string): T {
+  return new Proxy(
+    {},
+    {
+      get(): never {
+        throw new Error(`publish-content-seed-hash: '${label}' was read by an inspect() call, but this seed lookup never wires it for real use`);
+      },
+    }
+  ) as T;
+}
+
+/**
  * @complexity O(1) to create. The first lookup copies and migrates the seed (O(seed bytes)); every
  *   later lookup is one indexed read.
  */
@@ -53,12 +72,24 @@ export function createSqlitePublishContentSeedHash(input: CreateSqlitePublishCon
       const redirectRepo = new SqliteRedirectRepo(seedDb);
       return {
         workspaceId: input.workspaceId,
-        postRepo: new SqlitePostRepo(seedDb),
         clock: input.clock,
         idGen: input.idGen,
-        mediaRepo: new SqliteMediaRepo(seedDb),
-        menuRepo: new SqliteMenuRepo(seedDb),
-        redirectsWriteDeps: { ...input.redirectsWriteDeps, repo: redirectRepo, db: redirectRepo },
+        // F2 — one ports bag. Only the ports each registered type's `inspect()` actually reads need
+        // real seed-backed instances (see this file's own header: "the redirect handler's `inspect()`
+        // reads nothing but `repo`" is one example of this already being partial by design). The
+        // fields `PublishContentPorts` requires but no `inspect()` reads get a throwing stand-in
+        // ({@link unusedBySeedInspect}) instead of a real instance, so a future handler that DOES
+        // start reading one fails loudly here rather than silently hashing against the wrong store.
+        ports: {
+          post: { repo: new SqlitePostRepo(seedDb) },
+          media: {
+            repo: new SqliteMediaRepo(seedDb),
+            assetBlobRepo: unusedBySeedInspect("media.assetBlobRepo"),
+            blobStore: unusedBySeedInspect("media.blobStore"),
+          },
+          menu: { repo: new SqliteMenuRepo(seedDb), bindingRepo: unusedBySeedInspect("menu.bindingRepo") },
+          redirect: { ...input.redirectsWriteDeps, repo: redirectRepo, db: redirectRepo },
+        },
       };
     },
   });

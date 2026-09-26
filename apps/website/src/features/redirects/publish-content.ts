@@ -229,7 +229,7 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
   async function* pack(): AsyncIterable<PackedEntity> {
     // Absent `redirectsWriteDeps` degrades to "nothing to export" — mirrors `features/media/
     // publish-content.ts`'s identical convention for a caller with no use for this type.
-    const writeDeps = deps.redirectsWriteDeps;
+    const writeDeps = deps.ports.redirect;
     if (!writeDeps) return;
     const rows = await writeDeps.repo.list({ workspaceId: deps.workspaceId });
     for (const row of rows) {
@@ -257,7 +257,7 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
   }
 
   async function inspect(id: string): Promise<{ version: number; hash: string } | null> {
-    const writeDeps = deps.redirectsWriteDeps;
+    const writeDeps = deps.ports.redirect;
     if (!writeDeps) return null;
     const key = parseRedirectNaturalKey(id);
     if (!key) return null;
@@ -280,8 +280,8 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
    * one origin-allow check, at most two target-allow checks).
    */
   async function precheck(entity: PackedEntity): Promise<string | null> {
-    const writeDeps = deps.redirectsWriteDeps;
-    if (!writeDeps) return `redirect entity '${entity.id}' cannot be prechecked — no redirectsWriteDeps wired for this deps bag`;
+    const writeDeps = deps.ports.redirect;
+    if (!writeDeps) return `redirect entity '${entity.id}' cannot be prechecked — no redirect port wired for this deps bag`;
     const key = parseRedirectNaturalKey(entity.id);
     if (!key) return `redirect entity '${entity.id}' has a malformed natural key (expected 'matchType:fromPattern')`;
     const existing = await findRedirectByNaturalKey({
@@ -330,10 +330,10 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
     principalId: string;
     idempotencyKey: string;
   }): Promise<{ changeSetId: string }> {
-    const writeDeps = deps.redirectsWriteDeps;
+    const writeDeps = deps.ports.redirect;
     if (!writeDeps) {
       throw new Error(
-        `publish-content: ${entityType}.apply() requires PublishContentDeps.redirectsWriteDeps — wire it ` +
+        `publish-content: ${entityType}.apply() requires PublishContentDeps.ports.redirect — wire it ` +
           "from the real apply-loop composition root (features/publish-content/apply-loop.ts)."
       );
     }

@@ -1676,28 +1676,32 @@ export function createSqliteRouteDeps(
     runRepo: publishContentRunRepo,
     publishContentDeps: toPublishContentApplyDeps({
       workspaceId,
-      postRepo,
       clock,
       idGen,
       outbox,
       changeSets,
       authorize: identity.authorize,
-      forgetRemovedPost: bindForgetRemovedEntity(trashRepo, POST_ENTITY_TYPE),
-      // S4 (publish-overwrite-live-plan-2026-09-24) — same binding `routeDeps.removePost` below
-      // uses; the post handler's `retire()` needs it to wrap `retirePostForReplacement`.
-      removePost: removeEntityWithoutBlocker(bindRemoveEntity(trash, POST_ENTITY_TYPE)),
-      mediaRepo,
-      assetBlobRepo,
-      blobStore,
-      redirectsWriteDeps,
-      menuRepo,
-      navLocationBindingRepo,
-      // S19 (S-F4) — the theme-files handler's `apply()` stages/writes under this site's own themes
-      // root, the SAME value `routeDeps.themesDir` (below) resolves to. See `routes/types.ts`'s
-      // `themesDir` doc.
-      themesDir: resolvedThemesDir,
-      onThemeTreeReplaced: () => {
-        rescanThemes({ themes: siteThemes, dir: resolvedThemesDir });
+      // F2 — one ports bag keyed by entityType (`type-registry.ts`'s `PublishContentPorts`).
+      ports: {
+        post: {
+          repo: postRepo,
+          forgetRemoved: bindForgetRemovedEntity(trashRepo, POST_ENTITY_TYPE),
+          // S4 (publish-overwrite-live-plan-2026-09-24) — same binding `routeDeps.removePost` below
+          // uses; the post handler's `retire()` needs it to wrap `retirePostForReplacement`.
+          remove: removeEntityWithoutBlocker(bindRemoveEntity(trash, POST_ENTITY_TYPE)),
+        },
+        media: { repo: mediaRepo, assetBlobRepo, blobStore },
+        redirect: redirectsWriteDeps,
+        menu: { repo: menuRepo, bindingRepo: navLocationBindingRepo },
+        "theme-files": {
+          // S19 (S-F4) — the theme-files handler's `apply()` stages/writes under this site's own
+          // themes root, the SAME value `routeDeps.themesDir` (below) resolves to. See
+          // `routes/types.ts`'s `themesDir` doc.
+          themesDir: resolvedThemesDir,
+          onReplaced: () => {
+            rescanThemes({ themes: siteThemes, dir: resolvedThemesDir });
+          },
+        },
       },
     }),
     clock,

@@ -19,7 +19,13 @@ import { NO_PUBLISH_CONTENT_SEED_HASH } from "./seed-hash.js";
 import type { PublishContentSeedHashFn } from "./seed-hash.js";
 import type { PublishContentOutcomeRow, PublishContentReport } from "./planner.js";
 import { buildPublishContentCatalog } from "./type-registry.js";
-import type { EntityReplacement, PublishContentDeps, PublishContentHandler, PackedEntity } from "./type-registry.js";
+import type {
+  EntityReplacement,
+  PublishContentDeps,
+  PublishContentHandler,
+  PublishContentPorts,
+  PackedEntity,
+} from "./type-registry.js";
 
 /**
  * @file Task 8 of the publish-content (Publish Content) feature —
@@ -93,38 +99,25 @@ export function publishContentItemIdempotencyKey(input: {
 }
 
 /**
- * Every port some registered type's `apply()` needs, with the ones a `pack`-only caller may omit
- * made REQUIRED — the apply bag is the one bag that has to be complete.
+ * Every port some registered type's `apply()` needs, with `ports` made EXHAUSTIVE (every registered
+ * type's own port, not just the ones a particular caller happens to use) — the apply bag is the one
+ * bag that has to be complete.
  *
- * They are optional on {@link PublishContentDeps} because an export/plan caller genuinely has no use
- * for them, and each type degrades quietly when its own ports are absent. That is right for `pack`
- * and catastrophic for `apply`: an incomplete bag reaches a handler's `apply()` and throws a bare
- * `Error`, which `applyOneRow` cannot downgrade to a row outcome, so it aborts the whole run.
+ * `ports` stays `Partial` on {@link PublishContentDeps} because an export/plan caller genuinely has
+ * no use for every type's ports, and each type degrades quietly when its own port is absent. That is
+ * right for `pack` and catastrophic for `apply`: an incomplete bag reaches a handler's `apply()` and
+ * throws a bare `Error`, which `applyOneRow` cannot downgrade to a row outcome, so it aborts the
+ * whole run.
  *
- * This type exists so that failure is impossible to ship. A composition root that forgets a port
- * now fails to COMPILE at {@link toPublishContentApplyDeps} instead of failing at run time — which
- * is what happened when `media` landed: both roots kept building a bag from the three fields `post`
+ * This type exists so that failure is impossible to ship. A composition root that forgets a type's
+ * port now fails to COMPILE at {@link toPublishContentApplyDeps} instead of failing at run time —
+ * which is what happened when `media` landed: both roots kept building a bag from the fields `post`
  * needed, media's `pack()` silently returned nothing, and the type could not travel at all.
  */
-export type PublishContentApplyDeps = PublishContentDeps &
-  Required<
-    Pick<
-      PublishContentDeps,
-      | "outbox"
-      | "changeSets"
-      | "authorize"
-      | "forgetRemovedPost"
-      | "removePost"
-      | "mediaRepo"
-      | "assetBlobRepo"
-      | "blobStore"
-      | "redirectsWriteDeps"
-      | "menuRepo"
-      | "navLocationBindingRepo"
-      | "themesDir"
-      | "onThemeTreeReplaced"
-    >
-  >;
+export type PublishContentApplyDeps = Omit<PublishContentDeps, "ports"> &
+  Required<Pick<PublishContentDeps, "outbox" | "changeSets" | "authorize">> & {
+    readonly ports: PublishContentPorts;
+  };
 
 /**
  * The composition roots' one way to build {@link createPublishContentApplyPort}'s deps bag.

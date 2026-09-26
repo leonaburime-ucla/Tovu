@@ -878,27 +878,32 @@ export function createRouteDeps(options: CreateRouteDepsOptions = {}): Newslette
     runRepo: publishContentRunRepo,
     publishContentDeps: toPublishContentApplyDeps({
       workspaceId: seededWorkspace.id,
-      postRepo,
       clock,
       idGen,
       outbox,
       changeSets,
       authorize: identity.authorize,
-      forgetRemovedPost: bindForgetRemovedEntity(trashRepo, POST_ENTITY_TYPE),
-      // S4 (publish-overwrite-live-plan-2026-09-24) — same binding `routeDeps.removePost` below
-      // uses; the post handler's `retire()` needs it to wrap `retirePostForReplacement`.
-      removePost: removeEntityWithoutBlocker(bindRemoveEntity(trash, POST_ENTITY_TYPE)),
-      mediaRepo,
-      assetBlobRepo,
-      blobStore,
-      redirectsWriteDeps,
-      menuRepo,
-      navLocationBindingRepo,
-      // S19 (S-F4) — same value `routeDeps.themesDir` (below) resolves to. See `routes/types.ts`'s
-      // `themesDir` doc and `deps.ts`'s identical addition to this same apply bag.
-      themesDir: builtInThemesDir(),
-      onThemeTreeReplaced: () => {
-        rescanThemes({ themes: siteThemes, dir: builtInThemesDir() });
+      // F2 — one ports bag keyed by entityType (`type-registry.ts`'s `PublishContentPorts`).
+      ports: {
+        post: {
+          repo: postRepo,
+          forgetRemoved: bindForgetRemovedEntity(trashRepo, POST_ENTITY_TYPE),
+          // S4 (publish-overwrite-live-plan-2026-09-24) — same binding `routeDeps.removePost` below
+          // uses; the post handler's `retire()` needs it to wrap `retirePostForReplacement`.
+          remove: removeEntityWithoutBlocker(bindRemoveEntity(trash, POST_ENTITY_TYPE)),
+        },
+        media: { repo: mediaRepo, assetBlobRepo, blobStore },
+        redirect: redirectsWriteDeps,
+        menu: { repo: menuRepo, bindingRepo: navLocationBindingRepo },
+        "theme-files": {
+          // S19 (S-F4) — same value `routeDeps.themesDir` (below) resolves to. See
+          // `routes/types.ts`'s `themesDir` doc and `deps.ts`'s identical addition to this same
+          // apply bag.
+          themesDir: builtInThemesDir(),
+          onReplaced: () => {
+            rescanThemes({ themes: siteThemes, dir: builtInThemesDir() });
+          },
+        },
       },
     }),
     clock,

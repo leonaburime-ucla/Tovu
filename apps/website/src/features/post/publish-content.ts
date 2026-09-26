@@ -201,9 +201,15 @@ function toImportableRecord(
 function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentHandler {
   const entityType = kind; // "post" | "page" — PostKind's two values are exactly this feature's two entityTypes.
   const schemaVersion = 1;
+  // F2 — `post`'s port, keyed by entityType on the shared bag (`type-registry.ts`'s
+  // `PublishContentPorts`). Read once so every function below shares the same narrowing; absent
+  // behaves exactly like every other optional port on this interface: `pack`/`inspect`/`precheck`
+  // degrade to "nothing to report" (this file's own guards, below), `apply`/`retire` throw loudly.
+  const postRepo = deps.ports.post?.repo;
 
   async function* pack(): AsyncIterable<PackedEntity> {
-    const rows = await deps.postRepo.list({ workspaceId: deps.workspaceId });
+    if (!postRepo) return;
+    const rows = await postRepo.list({ workspaceId: deps.workspaceId });
     for (const row of rows) {
       if (row.kind !== kind) continue;
       // Trash is not content to publish. `PostRepoPort` is deliberately trash-BLIND (see
@@ -228,7 +234,8 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
   }
 
   async function inspect(id: string): Promise<{ version: number; hash: string } | null> {
-    const found = await deps.postRepo.findById({ workspaceId: deps.workspaceId, id });
+    if (!postRepo) return null;
+    const found = await postRepo.findById({ workspaceId: deps.workspaceId, id });
     if (!found || found.kind !== kind) return null;
     return { version: found.version, hash: contentHash(entityType, toPublishableState(found)) };
   }
@@ -257,16 +264,17 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
    * @complexity O(1) — two indexed repo reads.
    */
   async function precheck(entity: PackedEntity): Promise<string | null> {
+    if (!postRepo) return `${entityType} entity '${entity.id}' cannot be prechecked — no post repo wired for this deps bag`;
     const slug = entity.state.slug;
     if (typeof slug !== "string" || slug.length === 0) {
       return `${entityType} entity '${entity.id}' has no usable slug to check for a collision`;
     }
-    const holder = await deps.postRepo.findBySlug({ workspaceId: deps.workspaceId, slug });
+    const holder = await postRepo.findBySlug({ workspaceId: deps.workspaceId, slug });
     if (holder && holder.id !== entity.id) {
       return `slug '${slug}' is already held by a different ${entityType} ('${holder.id}')`;
     }
 
-    const existing = await deps.postRepo.findById({ workspaceId: deps.workspaceId, id: entity.id });
+    const existing = await postRepo.findById({ workspaceId: deps.workspaceId, id: entity.id });
     if (!existing) return null;
     if (isTrashed(existing)) {
       return `${entityType} '${entity.id}' is in the trash at this destination — restore it before publishing over it, or publishing would resurrect it as live content`;
@@ -334,12 +342,13 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
     principalId: string;
     idempotencyKey: string;
   }): Promise<{ changeSetId: string }> {
-    const { changeSets, authorize, outbox, forgetRemovedPost } = deps;
-    if (!changeSets || !authorize || !outbox || !forgetRemovedPost) {
+    const { changeSets, authorize, outbox } = deps;
+    const forgetRemovedPost = deps.ports.post?.forgetRemoved;
+    if (!changeSets || !authorize || !outbox || !postRepo || !forgetRemovedPost) {
       throw new Error(
         `publish-content: ${entityType}.apply() requires PublishContentDeps.changeSets/authorize/` +
-          "outbox/forgetRemovedPost — wire them from the real apply-loop composition root " +
-          "(features/publish-content/apply-loop.ts)."
+          "outbox and ports.post.repo/forgetRemoved — wire them from the real apply-loop composition " +
+          "root (features/publish-content/apply-loop.ts)."
       );
     }
     const gatewayDeps = { clock: deps.clock, idGen: deps.idGen, changeSets, outbox, authorize };
@@ -352,7 +361,7 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
     // re-reads inside the mutation and owns the AUTHORITATIVE decision — this read only shapes the
     // record handed to it, and a row that changes between the two is caught there by
     // `expectedVersion`.
-    let priorPost = await deps.postRepo.findById({ workspaceId: deps.workspaceId, id: input.entity.id });
+    let priorPost = await postRepo.findById({ workspaceId: deps.workspaceId, id: input.entity.id });
     const record = toImportableRecord({
       state: input.entity.state,
       workspaceId: deps.workspaceId,
@@ -374,12 +383,12 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
         entityId: input.entity.id,
         operation: isCreate ? "create" : "update",
         captureInverse: async () => {
-          priorPost = await deps.postRepo.findById({ workspaceId: deps.workspaceId, id: input.entity.id });
+          priorPost = await postRepo.findById({ workspaceId: deps.workspaceId, id: input.entity.id });
           return priorPost ? { ...priorPost } : null;
         },
         execute: () =>
           importPostEntity({
-            deps: { repo: deps.postRepo, clock: deps.clock, outbox, beforeSaveHook: deps.beforeSaveHook },
+            deps: { repo: postRepo, clock: deps.clock, outbox, beforeSaveHook: deps.beforeSaveHook },
             input: {
               workspaceId: deps.workspaceId,
               record,
@@ -396,7 +405,7 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
           // "forward" rather than the verbatim restore `command.ts:82` asks for.
           if (priorPost) {
             await restorePostForward({
-              deps: { repo: deps.postRepo, clock: deps.clock, outbox, forgetRemoved: forgetRemovedPost },
+              deps: { repo: postRepo, clock: deps.clock, outbox, forgetRemoved: forgetRemovedPost },
               input: { prior: priorPost, actorId: input.principalId },
             });
             return;
@@ -409,9 +418,9 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
           // "restore", and kept its slug reserved against the retry of the very import that failed.
           // The one thing it must not become is a no-op: leaving the row live would publish content
           // at the destination with no change-set record to revert it by.
-          const orphan = await deps.postRepo.findById({ workspaceId: deps.workspaceId, id: input.entity.id });
+          const orphan = await postRepo.findById({ workspaceId: deps.workspaceId, id: input.entity.id });
           if (!orphan) return;
-          await deps.postRepo.hardDelete({ workspaceId: deps.workspaceId, id: input.entity.id });
+          await postRepo.hardDelete({ workspaceId: deps.workspaceId, id: input.entity.id });
         },
       },
     });
@@ -433,13 +442,14 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
    * @complexity O(1) — two indexed repo reads, same as `precheck()`.
    */
   async function planRetire(entity: PackedEntity): Promise<RetireTarget | null> {
+    if (!postRepo) return null;
     const slug = entity.state.slug;
     if (typeof slug !== "string" || slug.length === 0 || slug === ROOT_SLUG) return null;
 
-    const holder = await deps.postRepo.findBySlug({ workspaceId: deps.workspaceId, slug });
+    const holder = await postRepo.findBySlug({ workspaceId: deps.workspaceId, slug });
     if (!holder || holder.id === entity.id) return null;
 
-    const existingHere = await deps.postRepo.findById({ workspaceId: deps.workspaceId, id: entity.id });
+    const existingHere = await postRepo.findById({ workspaceId: deps.workspaceId, id: entity.id });
     if (existingHere) return null;
 
     return {
@@ -480,12 +490,14 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
     principalId: string;
     idempotencyKey: string;
   }): Promise<{ changeSetId: string; undo(): Promise<void> }> {
-    const { changeSets, authorize, outbox, forgetRemovedPost, removePost } = deps;
-    if (!changeSets || !authorize || !outbox || !forgetRemovedPost || !removePost) {
+    const { changeSets, authorize, outbox } = deps;
+    const forgetRemovedPost = deps.ports.post?.forgetRemoved;
+    const removePost = deps.ports.post?.remove;
+    if (!changeSets || !authorize || !outbox || !postRepo || !forgetRemovedPost || !removePost) {
       throw new Error(
         `publish-content: ${entityType}.retire() requires PublishContentDeps.changeSets/authorize/` +
-          "outbox/forgetRemovedPost/removePost — wire them from the real apply-loop composition " +
-          "root (features/publish-content/apply-loop.ts)."
+          "outbox and ports.post.repo/forgetRemoved/remove — wire them from the real apply-loop " +
+          "composition root (features/publish-content/apply-loop.ts)."
       );
     }
     const gatewayDeps = { clock: deps.clock, idGen: deps.idGen, changeSets, outbox, authorize };
@@ -497,7 +509,7 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
     const undoRetire = async () => {
       if (!holder) return;
       await restorePostForward({
-        deps: { repo: deps.postRepo, clock: deps.clock, outbox, forgetRemoved: forgetRemovedPost },
+        deps: { repo: postRepo, clock: deps.clock, outbox, forgetRemoved: forgetRemovedPost },
         input: { prior: holder, actorId: input.principalId },
       });
     };
@@ -516,7 +528,7 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
         entityId: target.entityId,
         operation: "delete",
         captureInverse: async () => {
-          holder = await deps.postRepo.findById({ workspaceId: deps.workspaceId, id: target.entityId });
+          holder = await postRepo.findById({ workspaceId: deps.workspaceId, id: target.entityId });
           if (!holder) {
             throw new PostNotFoundError(`${target.entityType} '${target.entityId}' was not found`);
           }
@@ -529,7 +541,7 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
         },
         execute: () =>
           retirePostForReplacement({
-            deps: { repo: deps.postRepo, clock: deps.clock, outbox, remove: removePost },
+            deps: { repo: postRepo, clock: deps.clock, outbox, remove: removePost },
             input: {
               workspaceId: deps.workspaceId,
               id: target.entityId,

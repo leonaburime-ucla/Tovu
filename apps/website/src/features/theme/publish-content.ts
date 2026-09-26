@@ -477,12 +477,15 @@ async function prunePreviousCopies(themesDir: string, address: ThemeTreeAddress)
 function buildHandler(deps: PublishContentDeps): PublishContentHandler {
   const entityType = "theme-files";
   const schemaVersion = 1;
+  // F2 — `theme-files`' own port. `blobStore` is deliberately NOT part of it: it reuses the SAME
+  // ADR-027 store instance `ports.media` carries (one composition-root singleton, threaded to both).
+  const themePort = deps.ports["theme-files"];
 
   async function* pack(): AsyncIterable<PackedEntity> {
-    // Absent `themesDir` degrades to "nothing to export" — the same convention every other optional
-    // `PublishContentDeps` field already follows (`type-registry.ts`'s own header on `mediaRepo` etc).
-    if (!deps.themesDir) return;
-    const { entities } = await packThemeFilesEntities({ themesDir: deps.themesDir, fileBlobIndex: deps.fileBlobIndex });
+    // Absent the port degrades to "nothing to export" — the same convention every other optional
+    // port already follows (`type-registry.ts`'s own header on `PublishContentPorts`).
+    if (!themePort) return;
+    const { entities } = await packThemeFilesEntities({ themesDir: themePort.themesDir, fileBlobIndex: themePort.fileBlobIndex });
     for (const entity of entities) yield entity;
   }
 
@@ -500,8 +503,8 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
    * @complexity O(trees) — see {@link packThemeFilesEntities}'s own doc.
    */
   async function listSkipped(): Promise<readonly SkippedPackEntity[]> {
-    if (!deps.themesDir) return [];
-    const { skipped } = await packThemeFilesEntities({ themesDir: deps.themesDir });
+    if (!themePort) return [];
+    const { skipped } = await packThemeFilesEntities({ themesDir: themePort.themesDir });
     return skipped.map((tree) => ({ entityType, id: tree.treeKey, label: treeTitle(tree.treeKey), reason: tree.reason }));
   }
 
@@ -509,16 +512,16 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
    *  apply loop re-inspects and compares hashes before every write. */
   async function inspect(id: string): Promise<{ version: number; hash: string } | null> {
     const address = parseTreeAddress(id);
-    if (!deps.themesDir || !address) return null;
-    const hash = await hashTreeAt(path.join(deps.themesDir, address.tier, address.themeId), address.treeKey);
+    if (!themePort || !address) return null;
+    const hash = await hashTreeAt(path.join(themePort.themesDir, address.tier, address.themeId), address.treeKey);
     return hash === null ? null : { version: 0, hash };
   }
 
   /** What this destination was seeded with: its own `__original-themes__/<tier>/<id>` copy (plan §4). */
   async function seedHash(id: string): Promise<string | null> {
     const address = parseTreeAddress(id);
-    if (!deps.themesDir || !address) return null;
-    return hashTreeAt(path.join(deps.themesDir, THEME_CATALOG_DIR, address.tier, address.themeId), address.treeKey);
+    if (!themePort || !address) return null;
+    return hashTreeAt(path.join(themePort.themesDir, THEME_CATALOG_DIR, address.tier, address.themeId), address.treeKey);
   }
 
   /**
@@ -532,18 +535,22 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
     const title = treeTitle(entity.id);
     const address = parseTreeAddress(entity.id);
     if (!address) return `${title} was not published: '${entity.id}' is not a valid theme tree address`;
-    if (!deps.themesDir) return `${title} was not published: this site has no themes folder`;
+    if (!themePort) return `${title} was not published: this site has no themes folder`;
     const incoming = readIncomingFiles(entity);
     if ("reason" in incoming) return `${title} was not published: ${incoming.reason}`;
 
-    const linkReason = await checkDestinationLinks(deps.themesDir, address);
+    const linkReason = await checkDestinationLinks(themePort.themesDir, address);
     if (linkReason) return linkReason;
 
+    // Reuses `ports.media`'s blob store — the SAME ADR-027 instance a composition root threads to
+    // both (see this function's own header comment above `buildHandler`). `theme-files` has no blob
+    // store of its own; a caller with `themesDir` wired but no `media` port simply skips this scan.
+    const blobStore = deps.ports.media?.blobStore;
     const policyInputs: FileTreeFileInput[] = [];
     for (const file of incoming.files) {
       let textSample: string | undefined;
-      if (deps.blobStore && file.size <= MAX_SECRET_SCAN_BYTES && checkTreePath(file.path) === null) {
-        const bytes = await readBlob(deps.blobStore, deps.workspaceId, file.sha256);
+      if (blobStore && file.size <= MAX_SECRET_SCAN_BYTES && checkTreePath(file.path) === null) {
+        const bytes = await readBlob(blobStore, deps.workspaceId, file.sha256);
         if (bytes && bytes.length <= MAX_SECRET_SCAN_BYTES) textSample = Buffer.from(bytes).toString("utf8");
       }
       policyInputs.push({ path: file.path, size: file.size, mode: file.mode, textSample });
@@ -570,12 +577,14 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
     principalId: string;
     idempotencyKey: string;
   }): Promise<{ changeSetId: string }> {
-    const { changeSets, authorize, outbox, blobStore, themesDir } = deps;
+    const { changeSets, authorize, outbox } = deps;
+    const blobStore = deps.ports.media?.blobStore;
+    const themesDir = themePort?.themesDir;
     if (!changeSets || !authorize || !outbox || !blobStore || !themesDir) {
       throw new Error(
-        "publish-content: theme-files.apply() requires PublishContentDeps.changeSets/authorize/outbox/" +
-          "blobStore/themesDir — wire them from the real apply-loop composition root " +
-          "(features/publish-content/apply-loop.ts)."
+        "publish-content: theme-files.apply() requires PublishContentDeps.changeSets/authorize/outbox, " +
+          "ports.media.blobStore and ports['theme-files'].themesDir — wire them from the real " +
+          "apply-loop composition root (features/publish-content/apply-loop.ts)."
       );
     }
     const { entity } = input;
@@ -668,7 +677,7 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
           }
           await prunePreviousCopies(themesDir, address!);
           // The renderer serves partials/pages from memory, not disk — re-read them now.
-          await deps.onThemeTreeReplaced?.();
+          await themePort?.onReplaced?.();
           return swapped;
         },
         captureEntityVersion: () => 0,
@@ -678,7 +687,7 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
           await rename(target, discard);
           if (swapped.previous) await rename(swapped.previous, target);
           await rm(discard, { recursive: true, force: true });
-          await deps.onThemeTreeReplaced?.();
+          await themePort?.onReplaced?.();
         },
       },
     });

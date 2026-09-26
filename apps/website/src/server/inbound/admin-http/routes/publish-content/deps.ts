@@ -109,18 +109,20 @@ export type PublishContentRouteRegistrar = (app: Express, deps: PublishContentRo
 export function toPublishContentDeps(deps: PublishContentRouteDeps): PublishContentDeps {
   return {
     workspaceId: deps.workspaceId,
-    postRepo: deps.postRepo,
     clock: deps.clock,
     idGen: deps.idGen,
     outbox: deps.outbox,
     beforeSaveHook: deps.pluginBeforeSaveHook,
-    mediaRepo: deps.mediaRepo,
-    assetBlobRepo: deps.assetBlobRepo,
-    blobStore: deps.blobStore,
-    redirectsWriteDeps: deps.redirectsWriteDeps,
-    menuRepo: deps.menuRepo,
-    navLocationBindingRepo: deps.navLocationBindingRepo,
-    themesDir: deps.themesDir,
-    fileBlobIndex: deps.fileBlobIndex,
+    // F2 — one ports bag keyed by entityType, instead of nine flat fields. See `type-registry.ts`'s
+    // `PublishContentPorts` header for why. Apply-only ports (`post.forgetRemoved`/`.remove`,
+    // `theme-files.onReplaced`) are supplied only by the apply bag (`apply-loop.ts`'s
+    // `toPublishContentApplyDeps`), never here — this route bag only ever packs/inspects/prechecks.
+    ports: {
+      post: { repo: deps.postRepo },
+      media: { repo: deps.mediaRepo, assetBlobRepo: deps.assetBlobRepo, blobStore: deps.blobStore },
+      redirect: deps.redirectsWriteDeps,
+      menu: { repo: deps.menuRepo, bindingRepo: deps.navLocationBindingRepo },
+      "theme-files": { themesDir: deps.themesDir, fileBlobIndex: deps.fileBlobIndex },
+    },
   };
 }

@@ -147,7 +147,7 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
   async function* pack(): AsyncIterable<PackedEntity> {
     // Absent `menuRepo` degrades to "nothing to export" — mirrors `features/redirects/
     // publish-content.ts`'s identical convention for a caller with no use for this type.
-    const menuRepo = deps.menuRepo;
+    const menuRepo = deps.ports.menu?.repo;
     if (!menuRepo) return;
     const rows = await menuRepo.list({ workspaceId: deps.workspaceId });
     for (const row of rows) {
@@ -169,7 +169,7 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
   }
 
   async function inspect(id: string): Promise<{ version: number; hash: string } | null> {
-    const menuRepo = deps.menuRepo;
+    const menuRepo = deps.ports.menu?.repo;
     if (!menuRepo) return null;
     const found = await menuRepo.findById({ workspaceId: deps.workspaceId, id });
     if (!found) return null;
@@ -183,8 +183,8 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
    * @complexity O(1) repo calls plus {@link validateAndCloneTree}'s own O(n) tree walk.
    */
   async function precheck(entity: PackedEntity): Promise<string | null> {
-    const menuRepo = deps.menuRepo;
-    if (!menuRepo) return `menu entity '${entity.id}' cannot be prechecked — no menuRepo wired for this deps bag`;
+    const menuRepo = deps.ports.menu?.repo;
+    if (!menuRepo) return `menu entity '${entity.id}' cannot be prechecked — no menu port wired for this deps bag`;
 
     const state = entity.state;
     const slug = state.slug as string;
@@ -213,12 +213,12 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
     principalId: string;
     idempotencyKey: string;
   }): Promise<{ changeSetId: string }> {
-    const menuRepo = deps.menuRepo;
-    const navLocationBindingRepo = deps.navLocationBindingRepo;
+    const menuRepo = deps.ports.menu?.repo;
+    const navLocationBindingRepo = deps.ports.menu?.bindingRepo;
     if (!menuRepo || !navLocationBindingRepo || !deps.outbox) {
       throw new Error(
-        `publish-content: ${entityType}.apply() requires PublishContentDeps.menuRepo, ` +
-          ".navLocationBindingRepo and .outbox — wire them from the real apply-loop composition root " +
+        `publish-content: ${entityType}.apply() requires PublishContentDeps.ports.menu (repo, ` +
+          "bindingRepo) and .outbox — wire them from the real apply-loop composition root " +
           "(features/publish-content/apply-loop.ts)."
       );
     }
@@ -270,7 +270,7 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
    * descendants) via {@link menuHoldersReferencing}, plus one repo list call.
    */
   async function referencesTo(ids: readonly string[]): Promise<readonly ReferenceHolder[]> {
-    const menuRepo = deps.menuRepo;
+    const menuRepo = deps.ports.menu?.repo;
     if (!menuRepo) return [];
     const menus = await menuRepo.list({ workspaceId: deps.workspaceId });
     return menuHoldersReferencing(menus, ids);
@@ -303,11 +303,11 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
     principalId: string;
     runId: string;
   }): Promise<RepointResult> {
-    const menuRepo = deps.menuRepo;
+    const menuRepo = deps.ports.menu?.repo;
     const { changeSets, authorize, outbox } = deps;
     if (!menuRepo || !changeSets || !authorize || !outbox) {
       throw new Error(
-        `publish-content: ${entityType}.repointReferences() requires PublishContentDeps.menuRepo, ` +
+        `publish-content: ${entityType}.repointReferences() requires PublishContentDeps.ports.menu.repo, ` +
           ".changeSets, .authorize and .outbox — wire them from the real apply-loop composition root " +
           "(features/publish-content/apply-loop.ts)."
       );

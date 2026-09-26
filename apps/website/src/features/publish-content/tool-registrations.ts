@@ -50,8 +50,11 @@ import { normalizePeerBaseUrl } from "./peer-url.js";
 import { selectConnectedDestination, type PublishContentPeerRecord, type PublishContentPeerRepoPort } from "./peers.js";
 import { PUBLISH_CONTENT_APPLY_PERMISSION, PUBLISH_CONTENT_READ_PERMISSION } from "./permissions.js";
 import { describePublishReadiness, siteLabelFor, type PublishReadiness } from "./publish-readiness.js";
+import type { BeforeSaveHookPort } from "#src/features/post/post";
+import type { OutboxPort } from "@jini-ai/cms/core";
+
 import { listPublishContentContributors } from "./type-registry.js";
-import type { PublishContentDeps } from "./type-registry.js";
+import type { PublishContentPorts } from "./type-registry.js";
 
 /**
  * @file Wires publishing into the assistant's tool catalog: the two tools that make "is my site set
@@ -98,15 +101,13 @@ export interface PublishContentToolDeps {
   authorize: PublishContentToolAuthorize;
   clock: { nowIso(): string };
   idGen: { newId(): string };
-  postRepo: PublishContentDeps["postRepo"];
-  pluginBeforeSaveHook: PublishContentDeps["beforeSaveHook"];
-  outbox: PublishContentDeps["outbox"];
-  mediaRepo: PublishContentDeps["mediaRepo"];
-  assetBlobRepo: PublishContentDeps["assetBlobRepo"];
-  blobStore: PublishContentDeps["blobStore"];
-  redirectsWriteDeps: PublishContentDeps["redirectsWriteDeps"];
-  menuRepo: PublishContentDeps["menuRepo"];
-  navLocationBindingRepo: PublishContentDeps["navLocationBindingRepo"];
+  pluginBeforeSaveHook: BeforeSaveHookPort | undefined;
+  outbox: OutboxPort | undefined;
+  /** F2 — the same one-bag-per-type ports shape `type-registry.ts` declares, instead of the 7
+   *  individually-named repo/store fields this interface used to carry (unused by either handler
+   *  in this file today — kept only because this interface intersects into the assistant's wider
+   *  `AssistantToolRegistryDeps`, `assistant/tool-registrations.ts:268`). */
+  publishContentPorts?: Partial<PublishContentPorts>;
   workspaceRepo: { findById(id: string): Promise<{ name?: string } | null> };
   publishContentPeerRepo: PublishContentPeerRepoPort;
   publishContentPeerHttpClient: Parameters<typeof resolvePublishDestinationCredential>[0]["httpClient"];

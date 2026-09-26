@@ -65,15 +65,65 @@ import type { AuthorizeFn, ChangeSetRepoPort, ClockPort, OutboxPort } from "@jin
  *    never "nothing changed" (Task 4's export route is built as an ALLOWLIST of registered types for
  *    exactly this reason: plan §5 risk #8).
  *
- * ## `PublishContentDeps` — deliberately narrow today, meant to grow
+ * ## `PublishContentDeps.ports` — one typed bag, keyed by `entityType` (F2)
  *
+ * Every registered type used to widen `PublishContentDeps` with its own flat, individually-optional
+ * field (`mediaRepo`, `redirectsWriteDeps`, `menuRepo`, `navLocationBindingRepo`, …) — about a dozen
+ * of them accumulated one type at a time, each threaded by hand through `routes/publish-content/
+ * deps.ts`, `tool-registrations.ts`, both composition roots, and `publish-content-seed-hash.ts`.
+ * `media` shipped with a real `apply()` for a while before it could actually travel, because every
+ * one of those builders forgot three of the fields and nothing complained — the fields were
+ * OPTIONAL, so a missing one silently degraded `pack`/`inspect`/`precheck` to "nothing to report"
+ * (see each handler's own `if (!deps.mediaRepo) return;`-shaped guard) instead of failing anywhere.
+ *
+ * {@link PublishContentPorts} replaces that with ONE interface, one line per registered type, so a
+ * root that forgets a type's ports is a type error at exactly one place ({@link PublishContentDeps}
+ * for `pack`/`inspect`/`precheck` callers, or `apply-loop.ts`'s `PublishContentApplyDeps` for the
+ * apply path) instead of an N-file scavenger hunt. `ports` itself stays `Partial` here — a caller
+ * that only ever exports/plans (never applies) still has no use for supplying every type's ports,
+ * the same "absent behaves like it always did" contract the old per-type optional fields carried —
+ * but each individual port's OWN shape is exhaustive for that type, so a root that does supply a
+ * port can no longer misspell or half-supply one of its fields.
+ */
+export interface PublishContentPorts {
+  readonly post: {
+    readonly repo: PostRepoPort;
+    /** Apply-only — `apply()`'s rollback path (drops the Trash index row when the write it undoes
+     *  was a trash). Never read by `pack`/`inspect`/`precheck`. */
+    readonly forgetRemoved?: ForgetRemovedPostFn;
+    /** Apply-only — `retire()`'s address-clash overwrite (`retirePostForReplacement`). */
+    readonly remove?: RemovePostFn;
+  };
+  readonly media: {
+    readonly repo: VersionedMediaRepoPort;
+    readonly assetBlobRepo: AssetBlobRepoPort;
+    readonly blobStore: BlobStorePort;
+  };
+  /** `features/redirects/publish-content.ts`'s one real dependency: the same write-chokepoint deps
+   *  bag `createRedirect`/`updateRedirect` themselves take. */
+  readonly redirect: RedirectsWriteDeps;
+  readonly menu: {
+    readonly repo: MenuRepoPort;
+    readonly bindingRepo: NavLocationBindingRepoPort;
+  };
+  readonly "theme-files": {
+    readonly themesDir: string;
+    /** Apply-only — called right after `apply()` swaps a tree into {@link themesDir} (and again
+     *  after a rollback swaps it back), so the running site's in-memory `DiscoveredTheme.pages`/
+     *  `partials` re-render without a restart (2026-09-24 tovu.fly.dev). A composition root binds it
+     *  to `rescanThemes` over its own `RouteDeps.themes` array. */
+    readonly onReplaced?: () => void | Promise<void>;
+    /** The process-wide `sha256 -> {absPath, size}` map a file-tree `pack()` fills as it walks a
+     *  tree (`file-blob-index.ts`) — MUST be the same shared instance across every caller in one
+     *  process (never rebuilt per request); see that module's own header. */
+    readonly fileBlobIndex?: FileBlobIndexPort;
+  };
+}
+
+/**
  * Mirrors `assistant/tool-registrations.ts`'s own `AssistantToolRegistryDeps`: a wide deps bag
  * assembled from every registered type's OWN deps needs via type-only imports, so this registry
- * module itself never has to know what any particular resource needs to build its handler. Today
- * only `post`/`page` contribute (both backed by the same `PostRepoPort`), so the bag is exactly
- * their shape; the next type to land (media, forms, taxonomy `term`) widens this interface rather
- * than replacing it, the same incremental way `AssistantToolRegistryDeps` grew to ~30 domains' worth
- * of fields one contributor at a time.
+ * module itself never has to know what any particular resource needs to build its handler.
  */
 export interface PublishContentDeps {
   /** Every publish-content operation is scoped to one workspace (plan §1.1's mount-path
@@ -81,7 +131,6 @@ export interface PublishContentDeps {
    *  as a per-call parameter, the same choice `PostToolDeps`/`RouteDeps` already make for every
    *  other workspace-scoped deps bag in this codebase. */
   readonly workspaceId: string;
-  readonly postRepo: PostRepoPort;
   readonly clock: ClockPort;
   readonly idGen: { newId(): string };
   /** Optional — absent behaves exactly like `CreatePostDeps.outbox`/`beforeSaveHook` absent: no
@@ -93,103 +142,17 @@ export interface PublishContentDeps {
    * `pack`/`inspect`/`precheck` caller (Task 4's export route, Task 5/7's planner/gated-hooks) never
    * reads these, so they stay OPTIONAL rather than widening every existing `PublishContentDeps`
    * builder (`routes/publish-content/deps.ts`'s shared `toPublishContentDeps`) into supplying values
-   * it has no use for — the same "absent behaves like it always did" convention {@link outbox}/
-   * {@link beforeSaveHook} already establish on this interface. Only a real
-   * `PublishContentApplyPort` (`features/publish-content/apply-loop.ts`) supplies them, because
-   * only `apply()` (never `pack`/`inspect`/`precheck`) needs to route a write through the command
-   * gateway (plan §1.4). A handler whose `apply()` is reached without these wired throws loudly
-   * rather than silently skipping the gateway — see `features/post/publish-content.ts`'s own guard.
+   * it has no use for. Only a real `PublishContentApplyPort` (`features/publish-content/apply-loop.ts`)
+   * supplies them, because only `apply()` (never `pack`/`inspect`/`precheck`) needs to route a write
+   * through the command gateway (plan §1.4). A handler whose `apply()` is reached without these wired
+   * throws loudly rather than silently skipping the gateway — see `features/post/publish-content.ts`'s
+   * own guard.
    */
   readonly changeSets?: ChangeSetRepoPort;
   readonly authorize?: AuthorizeFn;
-  /**
-   * Task 12 (plan §4 task 12) — `media`'s own ports, widening this bag for the first non-`post`/
-   * `page` contributor (this interface's own header, "`PublishContentDeps` — deliberately narrow
-   * today, meant to grow", anticipates exactly this). All three arrive together (one type's real
-   * deps, not three independently-optional knobs) and stay OPTIONAL for the identical reason
-   * {@link outbox}/{@link beforeSaveHook}/{@link changeSets} already are: a `PublishContentDeps`
-   * builder that has no use for media stays unchanged, and `features/media/publish-content.ts`'s
-   * `pack`/`inspect`/`precheck` degrade to "nothing to report" rather than throwing when absent
-   * (see that file's own doc).
-   *
-   * **That silent degradation is exactly why optional is dangerous for the apply path, and why the
-   * callers that matter no longer get a choice.** Media was a registered type with a real `apply()`
-   * for a while before it could actually travel, because every builder omitted these three and
-   * nothing complained. Both the route bag
-   * (`routes/publish-content/deps.ts`'s `toPublishContentDeps`) and the apply bag
-   * (`apply-loop.ts`'s `toPublishContentApplyDeps`) now require them, so the omission is a compile
-   * error at the composition roots while this interface stays permissive for focused callers.
-   */
-  /**
-   * The post domain's Trash-index forget, needed only by `apply()`'s rollback path — the same
-   * OPTIONAL-here/required-at-the-builders posture {@link changeSets}/{@link authorize} carry, and
-   * for the same reason: `pack`/`inspect`/`precheck` never compensate anything. `apply()` guards on
-   * it explicitly (`features/post/publish-content.ts`) rather than degrading silently.
-   */
-  readonly forgetRemovedPost?: ForgetRemovedPostFn;
-  /**
-   * S4 (`publish-overwrite-live-plan-2026-09-24.md` §4/§5) — the post domain's own Trash primitive,
-   * needed only by `retire()`'s address-clash overwrite (`features/post/publish-content.ts`), which
-   * wraps `retirePostForReplacement` (`post.ts`) the same way {@link forgetRemovedPost} is needed
-   * only by `apply()`'s rollback. Optional here for the identical "absent behaves like it always
-   * did" reason every other apply-only port on this interface already is; required at the apply
-   * bag (`apply-loop.ts`'s `PublishContentApplyDeps`), not here.
-   */
-  readonly removePost?: RemovePostFn;
-  readonly mediaRepo?: VersionedMediaRepoPort;
-  readonly assetBlobRepo?: AssetBlobRepoPort;
-  readonly blobStore?: BlobStorePort;
-  /**
-   * S2 (`redirect` publish type) — `features/redirects/publish-content.ts`'s one real dependency:
-   * the same write chokepoint deps bag `createRedirect`/`updateRedirect` themselves take. Optional
-   * for the identical reason {@link mediaRepo}/{@link assetBlobRepo}/{@link blobStore} already are —
-   * `features/redirects/publish-content.ts`'s `pack`/`inspect`/`precheck` degrade to "nothing to
-   * report" when absent (see that file's own doc), and only `apply()` requires it wired (enforced at
-   * the apply bag, `apply-loop.ts`'s `PublishContentApplyDeps`, not here).
-   */
-  readonly redirectsWriteDeps?: RedirectsWriteDeps;
-  /**
-   * S3 (`menu` publish type) — `features/navigation/publish-content.ts`'s two real dependencies:
-   * the same `MenuRepoPort`/`NavLocationBindingRepoPort` pair every real menu route already reads
-   * off `RouteDeps` (`server/routes/types.ts:1175-1177`). Optional for the identical reason
-   * {@link redirectsWriteDeps}/{@link mediaRepo} already are — `pack`/`inspect`/`precheck` degrade
-   * to "nothing to report" when either is absent (see that file's own doc), and only `apply()`
-   * requires both wired (enforced at the apply bag, `apply-loop.ts`'s `PublishContentApplyDeps`, not
-   * here). Unlike `redirectsWriteDeps`, both composition roots also thread these through the ROUTE
-   * and TOOL deps bags unconditionally (not just the apply bag) — `RouteDeps.menuRepo`/
-   * `.navLocationBindingRepo` are already non-optional upstream, so `pack`/`inspect`/`precheck`
-   * never actually see them absent outside a focused unit test.
-   */
-  readonly menuRepo?: MenuRepoPort;
-  readonly navLocationBindingRepo?: NavLocationBindingRepoPort;
-  /**
-   * S-F3 (`publish-files-plan-2026-09-24.md` §6) — `features/theme/publish-content.ts`'s one real
-   * filesystem dependency: the site's own themes root (`RouteDeps.themesDir`, already resolved once
-   * per composition root by `siteThemesDir()`). Optional for the identical reason every other
-   * type-specific port on this interface already is — `pack`/`inspect`/`precheck` degrade to "nothing
-   * to report" when absent (see this interface's header), and only a caller with real file-tree work
-   * needs it wired at all.
-   */
-  readonly themesDir?: string;
-  /**
-   * Called by `theme-files`' `apply()` right after it swaps a tree into {@link themesDir} (and again
-   * after a rollback swaps it back). The running site renders pages from `DiscoveredTheme.pages`/
-   * `partials`, which are read into memory at discovery and never re-read from disk — so without
-   * this a published theme's `/theme-assets/*` files change while every rendered page keeps the old
-   * header/footer until the process restarts (2026-09-24 tovu.fly.dev). A composition root binds it
-   * to `rescanThemes` over its own `RouteDeps.themes` array.
-   */
-  readonly onThemeTreeReplaced?: () => void | Promise<void>;
-  /**
-   * S-F3 — the process-wide `sha256 -> {absPath, size}` map a file-tree `pack()` fills as it walks a
-   * tree (`features/publish-content/file-blob-index.ts`), read by
-   * `composite-blob-source.ts`'s `createCompositePeerBlobSource` so a peer can fetch those bytes
-   * without them ever being copied into the media blob store. Optional for the same reason
-   * {@link themesDir} is: a caller with no file-tree type in play has nothing to fill or read here.
-   * Unlike most optional ports on this interface, this one MUST be the same shared instance across
-   * every caller in one process (never rebuilt per request) — see that module's own header.
-   */
-  readonly fileBlobIndex?: FileBlobIndexPort;
+  /** F2 — every registered type's own ports, keyed by `entityType`. See {@link PublishContentPorts}'s
+   *  own header for why this replaced a dozen individually-optional flat fields. */
+  readonly ports: Partial<PublishContentPorts>;
 }
 
 /**

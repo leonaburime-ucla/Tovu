@@ -183,15 +183,18 @@ async function hasBlobBytes(required: { blobStore: BlobStorePort; workspaceId: s
 function buildHandler(deps: PublishContentDeps): PublishContentHandler {
   const entityType = "media";
   const schemaVersion = 1;
+  // F2 — `media`'s port, keyed by entityType on the shared bag (`type-registry.ts`'s
+  // `PublishContentPorts`).
+  const mediaPort = deps.ports.media;
 
   async function* pack(): AsyncIterable<PackedEntity> {
-    // Absent `mediaRepo` (every caller before this feature's deps bag is widened for real — see
-    // `type-registry.ts`'s `PublishContentDeps.mediaRepo` doc) degrades to "nothing to export",
+    // Absent `ports.media` (every caller before this feature's deps bag is widened for real — see
+    // `type-registry.ts`'s `PublishContentPorts.media` doc) degrades to "nothing to export",
     // never a crash — the same "type absent from the registry is absent from the bundle" contract
     // `type-registry.ts`'s own header rule 5 states for an unregistered type, applied here to a
     // registered-but-not-yet-wired one.
-    if (!deps.mediaRepo) return;
-    const rows = await deps.mediaRepo.list({ workspaceId: deps.workspaceId });
+    if (!mediaPort) return;
+    const rows = await mediaPort.repo.list({ workspaceId: deps.workspaceId });
     for (const row of rows) {
       yield {
         entityType,
@@ -208,8 +211,8 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
   }
 
   async function inspect(id: string): Promise<{ version: number; hash: string } | null> {
-    if (!deps.mediaRepo) return null;
-    const found = await deps.mediaRepo.findById({ workspaceId: deps.workspaceId, id });
+    if (!mediaPort) return null;
+    const found = await mediaPort.repo.findById({ workspaceId: deps.workspaceId, id });
     if (!found) return null;
     return { version: found.version, hash: contentHash(entityType, toHashableState(found)) };
   }
@@ -227,24 +230,22 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
    * @complexity O(1) — at most one slug lookup and one blob existence probe.
    */
   async function precheck(entity: PackedEntity): Promise<string | null> {
-    if (!deps.mediaRepo) return `media entity '${entity.id}' cannot be prechecked — no mediaRepo wired for this deps bag`;
+    if (!mediaPort) return `media entity '${entity.id}' cannot be prechecked — no media port wired for this deps bag`;
     // Unlike `post`'s precheck, an absent/empty slug does NOT block here — `media.slug` is
     // nullable/optional in practice (pre-backfill rows genuinely have none), so there is nothing to
     // check for a collision, not an error condition. See `import-media-entity.ts`'s identical
     // reasoning for the real write path.
     const holderId = await findSlugConflict({
-      mediaRepo: deps.mediaRepo,
+      mediaRepo: mediaPort.repo,
       workspaceId: deps.workspaceId,
       entityId: entity.id,
       slug: entity.state.slug,
     });
     if (holderId) return `slug '${String(entity.state.slug)}' is already held by a different media ('${holderId}')`;
 
-    if (deps.blobStore) {
-      for (const sha256 of entity.requiredBlobs) {
-        if (!(await hasBlobBytes({ blobStore: deps.blobStore, workspaceId: deps.workspaceId, sha256 }))) {
-          return `required blob '${sha256}' is not available on this destination`;
-        }
+    for (const sha256 of entity.requiredBlobs) {
+      if (!(await hasBlobBytes({ blobStore: mediaPort.blobStore, workspaceId: deps.workspaceId, sha256 }))) {
+        return `required blob '${sha256}' is not available on this destination`;
       }
     }
     return null;
@@ -275,7 +276,7 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
     principalId: string;
     idempotencyKey: string;
   }): Promise<MediaApplyResult> {
-    const { changeSets, authorize, outbox, mediaRepo, assetBlobRepo, blobStore } = deps;
+    const { changeSets, authorize, outbox } = deps;
     if (!changeSets || !authorize || !outbox) {
       throw new Error(
         `publish-content: ${entityType}.apply() requires PublishContentDeps.changeSets/authorize/` +
@@ -283,13 +284,13 @@ function buildHandler(deps: PublishContentDeps): PublishContentHandler {
           "(features/publish-content/apply-loop.ts)."
       );
     }
-    if (!mediaRepo || !assetBlobRepo || !blobStore) {
+    if (!mediaPort) {
       throw new Error(
-        `publish-content: ${entityType}.apply() requires PublishContentDeps.mediaRepo/assetBlobRepo/` +
-          "blobStore — wire them from the real apply-loop composition root " +
-          "(features/publish-content/apply-loop.ts)."
+        `publish-content: ${entityType}.apply() requires PublishContentDeps.ports.media — wire it ` +
+          "from the real apply-loop composition root (features/publish-content/apply-loop.ts)."
       );
     }
+    const { repo: mediaRepo, assetBlobRepo, blobStore } = mediaPort;
 
     const workspaceId = deps.workspaceId;
     const source = input.entity.state as unknown as MediaRecord; // trusted round-trip: this file's own pack() produced it.
