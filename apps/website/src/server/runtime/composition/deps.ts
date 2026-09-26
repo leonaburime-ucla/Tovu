@@ -1397,6 +1397,7 @@ export function createSqliteRouteDeps(
   // same `content.db` either way (it is a stateless adapter over `db`), but one shared instance
   // keeps this identical to `server/app.ts`'s hermetic root, where sharing is load-bearing.
   const contentTypeRepo = new SqliteContentTypeRepo(db);
+  const contentTypeIndexProvisioner = new NoopContentTypeIndexProvisioner();
   // SPEC-043/ADR-047 (widgets, Fable adversarial-review fix 2026-07-21) — the boot-wiring pass
   // `resolvers/index.ts`'s `wireCoreResolvers` file header always said was needed before the app
   // served traffic, but no composition root ever called it. Without this, `menu`/`recent-entries`/
@@ -1694,7 +1695,7 @@ export function createSqliteRouteDeps(
         media: { repo: mediaRepo, assetBlobRepo, blobStore },
         redirect: redirectsWriteDeps,
         menu: { repo: menuRepo, bindingRepo: navLocationBindingRepo },
-        ...buildContentPublishPorts({ formDefinitionRepo }),
+        ...buildContentPublishPorts({ formDefinitionRepo, contentTypeRepo, contentTypeIndexProvisioner }),
         "theme-files": {
           // S19 (S-F4) — the theme-files handler's `apply()` stages/writes under this site's own
           // themes root, the SAME value `routeDeps.themesDir` (below) resolves to. See
@@ -1964,7 +1965,7 @@ export function createSqliteRouteDeps(
     // scope (persistence for the registry/entries/taxonomy rows themselves) does not cover —
     // disclosed explicitly rather than silently left implying it's done.
     contentTypeRepo,
-    contentTypeIndexProvisioner: new NoopContentTypeIndexProvisioner(),
+    contentTypeIndexProvisioner,
     entryRepo,
     taxonomyRepo: new SqliteTaxonomyRepo({ db, workspaceId: workspaceId }),
     termRepo: new SqliteTermRepo({ db, workspaceId: workspaceId }),

@@ -769,6 +769,7 @@ export function createRouteDeps(options: CreateRouteDepsOptions = {}): Newslette
   // `new InMemoryContentTypeRepo()` here would be an empty, disconnected double nothing ever
   // registers a content type into, silently breaking every collection-configured widget.
   const contentTypeRepo = new InMemoryContentTypeRepo();
+  const contentTypeIndexProvisioner = new NoopContentTypeIndexProvisioner();
   // SPEC-043/ADR-047 (widgets, Fable adversarial-review fix 2026-07-21) — mirrors `server/deps.ts`'s
   // identical fix: without this, no test exercising the real HTTP path ever ran a dynamic widget
   // type (`menu`/`recent-entries`/`contact-form`) through its actual resolver, only test doubles.
@@ -896,7 +897,7 @@ export function createRouteDeps(options: CreateRouteDepsOptions = {}): Newslette
         media: { repo: mediaRepo, assetBlobRepo, blobStore },
         redirect: redirectsWriteDeps,
         menu: { repo: menuRepo, bindingRepo: navLocationBindingRepo },
-        ...buildContentPublishPorts({ formDefinitionRepo }),
+        ...buildContentPublishPorts({ formDefinitionRepo, contentTypeRepo, contentTypeIndexProvisioner }),
         "theme-files": {
           // S19 (S-F4) — same value `routeDeps.themesDir` (below) resolves to. See
           // `routes/types.ts`'s `themesDir` doc and `deps.ts`'s identical addition to this same
@@ -1128,7 +1129,7 @@ export function createRouteDeps(options: CreateRouteDepsOptions = {}): Newslette
     // content-types/entries plus the restore-points/dbOps/site-status/recovery seams the
     // Database/Recovery screens' remaining read routes need.
     contentTypeRepo,
-    contentTypeIndexProvisioner: new NoopContentTypeIndexProvisioner(),
+    contentTypeIndexProvisioner,
     entryRepo,
     taxonomyRepo,
     termRepo,

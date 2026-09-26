@@ -1,3 +1,4 @@
+import type { ContentTypeListPort, ContentTypeRepoPort, IndexProvisionerPort } from "#src/features/content-types/index";
 import type { FormDefinitionRepoPort } from "#src/features/forms/index";
 import type { PublishContentPorts } from "./type-registry.js";
 
@@ -14,14 +15,17 @@ import type { PublishContentPorts } from "./type-registry.js";
  */
 export interface ContentPublishSources {
   readonly formDefinitionRepo: FormDefinitionRepoPort;
+  readonly contentTypeRepo: ContentTypeRepoPort & ContentTypeListPort;
+  readonly contentTypeIndexProvisioner: IndexProvisionerPort;
 }
 
 /** The ports keys this builder owns. */
-export type ContentPublishPortKey = "form";
+export type ContentPublishPortKey = "form" | "content-type";
 
 /** @complexity O(1) — a field projection, no I/O. */
 export function buildContentPublishPorts(sources: ContentPublishSources): Pick<PublishContentPorts, ContentPublishPortKey> {
   return {
     form: { repo: sources.formDefinitionRepo },
+    "content-type": { repo: sources.contentTypeRepo, indexProvisioner: sources.contentTypeIndexProvisioner },
   };
 }

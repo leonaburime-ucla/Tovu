@@ -101,7 +101,8 @@ export interface RepoPublishTypeConfig<Row, Ports> {
     readonly summary?: (ctx: RepoWriteContext<Row, Ports>) => string | Promise<string>;
   };
   /** `blocked` keeps the error's message; `conflict` wraps it in {@link changedSincePlan}. Anything
-   *  else rethrows and aborts the run. */
+   *  else rethrows and aborts the run. `conflict` is matched first, so `blocked` may name a base class
+   *  (e.g. Jini's `ToolInputError`) that a conflict class also extends. */
   readonly errors?: { readonly blocked?: readonly ErrorClass[]; readonly conflict?: readonly ErrorClass[] };
 
   /** Type-specific handler methods, passed through unchanged. */
@@ -119,6 +120,12 @@ export function gatewayDeps(deps: PublishContentDeps, entityType: string) {
     throw new Error(`publish-content: ${entityType}.apply() requires PublishContentDeps.changeSets/authorize/outbox — wire it from the apply-loop composition root (features/publish-content/apply-loop.ts).`);
   }
   return { clock, idGen, changeSets, authorize, outbox };
+}
+
+/** Unwraps a Jini-style `Result`, throwing its error for `errors` to map. */
+export function okOrThrow<T>(result: { ok: true; value: T } | { ok: false; error: Error }): T {
+  if (!result.ok) throw result.error;
+  return result.value;
 }
 
 /** Builds a `PublishContentContributor` from a {@link RepoPublishTypeConfig}. */
@@ -141,10 +148,10 @@ export function createRepoPublishHandler<Row, Ports>(config: RepoPublishTypeConf
 
   function toRowError(err: unknown, id: string): unknown {
     if (err instanceof PublishContentApplyRowError || !(err instanceof Error)) return err;
-    if (config.errors?.blocked?.some((cls) => err instanceof cls)) return new PublishContentApplyRowError("blocked", err.message);
     if (config.errors?.conflict?.some((cls) => err instanceof cls)) {
       return new PublishContentApplyRowError("conflict", changedSincePlan(entityType, id, err.message));
     }
+    if (config.errors?.blocked?.some((cls) => err instanceof cls)) return new PublishContentApplyRowError("blocked", err.message);
     return err;
   }
 

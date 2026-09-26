@@ -10,6 +10,7 @@ import { createPublishContentSeedHash, type PublishContentSeedHashFn } from "#sr
 import { SqliteRedirectRepo, type RedirectsWriteDeps } from "#src/features/redirects/index";
 import { buildContentPublishPorts } from "#src/features/publish-content/content-ports";
 import { SqliteFormDefinitionRepo } from "#src/features/forms/repo.sqlite";
+import { SqliteContentTypeRepo } from "#src/features/content-types/repo.sqlite";
 import { openContentDb } from "#src/platform/db/sqlite/content-db";
 import { SqliteMediaRepo } from "#src/platform/db/sqlite/media-repo.sqlite";
 
@@ -91,7 +92,11 @@ export function createSqlitePublishContentSeedHash(input: CreateSqlitePublishCon
           },
           menu: { repo: new SqliteMenuRepo(seedDb), bindingRepo: unusedBySeedInspect("menu.bindingRepo") },
           redirect: { ...input.redirectsWriteDeps, repo: redirectRepo, db: redirectRepo },
-          ...buildContentPublishPorts({ formDefinitionRepo: new SqliteFormDefinitionRepo(seedDb) }),
+          ...buildContentPublishPorts({
+            formDefinitionRepo: new SqliteFormDefinitionRepo(seedDb),
+            contentTypeRepo: new SqliteContentTypeRepo(seedDb),
+            contentTypeIndexProvisioner: unusedBySeedInspect("contentTypeIndexProvisioner"),
+          }),
         },
       };
     },
