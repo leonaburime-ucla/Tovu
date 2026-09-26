@@ -4,7 +4,8 @@ import test from "node:test";
 import type Database from "better-sqlite3";
 
 import { InMemoryContentTypeRepo } from "#src/features/content-types/index";
-import { applyReport, makeSite, packAll, plan, registerOnly, roundTrip, WORKSPACE_ID } from "#src/features/publish-content/__tests__/round-trip-harness";
+import { applyReport, makeSite, packAll, plan, registerOnly, roundTrip, sqliteContentSite, WORKSPACE_ID } from "#src/features/publish-content/__tests__/round-trip-harness";
+import { contributeTaxonomyPublish, contributeTermPublish } from "#src/features/taxonomy/publish-content";
 import { openContentDb } from "#src/platform/db/sqlite/content-db";
 import type { EntryRecord } from "../../index.js";
 import { contributeCollectionEntryPublish } from "../../publish-content.js";
@@ -124,4 +125,37 @@ test("collection-entry: the same id created at the destination after the plan is
   await dst.entries.save(entry({ id: "e-cake", slug: "cake" }));
   await dst.entries.save(entry({ id: "e-soup", slug: "soup" }));
   await assert.rejects(applyReport(report, entities, dest), (err: Error & { rowOutcome?: string }) => err.rowOutcome === "conflict");
+});
+
+test("collection-entry termIds: packed sorted, synced exactly on the destination, then unchanged; none = omitted", async () => {
+  registerOnly([contributeTaxonomyPublish(), contributeTermPublish(), contributeCollectionEntryPublish()]);
+  const [src, dst] = [sqliteContentSite(), sqliteContentSite()];
+  for (const site of [src, dst]) {
+    await site.contentTypes.save({ workspaceId: WORKSPACE_ID, key: "recipe", label: "Recipes", fields: [{ name: "servings", kind: "integer", required: false, queryable: false }], status: "active", version: 1, tombstonedAt: null });
+  }
+  await src.taxonomies.insert({ id: "tx-diet", name: "Diet", hierarchical: false, status: "active", updatedAt: at, version: 1 });
+  for (const id of ["t-veg", "t-quick", "t-hot"]) {
+    await src.terms.insert({ id, taxonomyId: "tx-diet", parentId: null, name: id, status: "active", updatedAt: at, version: 1 });
+  }
+  await src.entries.save(entry({ id: "e-soup", slug: "soup" }));
+  await src.entries.save(entry({ id: "e-plain", slug: "plain" }));
+  const tag = (termId: string) => src.entryTerms.upsert({ contentType: "recipe", contentId: "e-soup", termId, addedAt: at });
+  await tag("t-veg");
+  await tag("t-quick");
+  const assigned = async () => (await dst.entryTerms.listForContent({ contentType: "recipe", contentId: "e-soup" })).map((r) => r.termId).sort();
+  const source = makeSite(src.ports, "src");
+  const dest = makeSite(dst.ports, "dst");
+
+  const { entities, second } = await roundTrip(source, dest);
+  assert.deepEqual(entities.find((e) => e.id === "e-soup")?.state.termIds, ["t-quick", "t-veg"]);
+  assert.equal("termIds" in (entities.find((e) => e.id === "e-plain")?.state ?? {}), false);
+  assert.deepEqual(await assigned(), ["t-quick", "t-veg"]);
+  assert.deepEqual(second.rows.map((r) => r.outcome).filter((o) => o !== "unchanged"), []);
+
+  await src.entryTerms.remove({ contentType: "recipe", contentId: "e-soup", termId: "t-veg" });
+  await tag("t-hot");
+  const next = await packAll(source);
+  await applyReport(await plan(next, dest, ["collection-entry:e-soup"]), next, dest);
+  assert.deepEqual(await assigned(), ["t-hot", "t-quick"]);
+  assert.deepEqual((await plan(await packAll(source), dest)).rows.map((r) => r.outcome).filter((o) => o !== "unchanged"), []);
 });

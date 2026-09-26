@@ -31,6 +31,7 @@ import { contributePagePublish, contributePostPublish, toPublishableState } from
 import { removeVia } from "#src/features/post/__tests__/remove-post-double";
 import { InMemoryAssetBlobRepo, InMemoryBlobStore, InMemoryVersionedMediaRepo, computeBlobStorageKey, type MediaRecord } from "#src/features/media/index";
 import { contributeMediaPublish } from "#src/features/media/publish-content";
+import { contributeTaxonomyPublish, contributeTermPublish } from "#src/features/taxonomy/publish-content";
 
 import { InMemoryMenuRepo, InMemoryNavLocationBindingRepo, type MenuRepoPort, type NavMenuEntry } from "#src/features/navigation/index";
 import { contributeMenusPublish } from "#src/features/navigation/publish-content";
@@ -61,6 +62,12 @@ import type {
 import { createPublishContentApplyPort, publishContentItemIdempotencyKey } from "../apply-loop.js";
 
 const WORKSPACE_ID = "11111111-1111-1111-1111-111111111111";
+/** `post` depends on `term`; no taxonomy ports are wired here, so both pack nothing. */
+function registerTermTypes(): void {
+  registerPublishContentContributor(contributeTaxonomyPublish());
+  registerPublishContentContributor(contributeTermPublish());
+}
+
 /** The bundle's AUTHENTICATED source — plan §1.6 / §5 risk #9's own peer key. Deliberately a
  *  different string from {@link OPERATOR_PRINCIPAL_ID} throughout this file, so a test that
  *  accidentally keys a baseline on the wrong one fails loudly rather than by coincidence matching. */
@@ -98,7 +105,7 @@ function packedFrom(post: PostRecord): PackedEntity {
   return {
     entityType: "post",
     id: post.id,
-    schemaVersion: 1,
+    schemaVersion: 2, // post's current version (termIds, plan §3.7)
     contentHash: contentHash("post", toPublishableState(post)),
     hashVersion: CONTENT_HASH_VERSION,
     requiredBlobs: [],
@@ -121,6 +128,7 @@ function makeHarness(
   resetPublishContentContributorsForTests();
   registerPublishContentContributor(contributeMediaPublish());
   registerPublishContentContributor(contributePostPublish());
+  registerTermTypes(); // post dependsOn term (termIds, plan §3.7)
 
   const postRepo = new InMemoryPostRepo(rows);
   const clock = makeClock();
@@ -888,6 +896,7 @@ test("a refused report is persisted as an 'abandoned' run and produces no writes
 test("a media row blocked at apply time downgrades that ONE row and the rest of the run still applies", async () => {
   resetPublishContentContributorsForTests();
   registerPublishContentContributor(contributePostPublish());
+  registerTermTypes(); // post dependsOn term (termIds, plan §3.7)
   registerPublishContentContributor(contributeMediaPublish());
 
   const postRepo = new InMemoryPostRepo([]);
@@ -1116,6 +1125,7 @@ function makeMenuHarness(rows: PostRecord[] = [], options: { menuRepo?: MenuRepo
   resetPublishContentContributorsForTests();
   registerPublishContentContributor(contributeMediaPublish());
   registerPublishContentContributor(contributePostPublish());
+  registerTermTypes(); // post dependsOn term (termIds, plan §3.7)
   registerPublishContentContributor(contributePagePublish()); // menu's own MENU_DEPENDS_ON names it
   registerPublishContentContributor(contributeMenusPublish());
 

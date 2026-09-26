@@ -111,14 +111,14 @@ function packedFrom(entityType: "post" | "page", post: PostRecord) {
 test("contributePostPublish returns data only — entityType/dependsOn are plain values, build is deferred", () => {
   const contributor = contributePostPublish();
   assert.equal(contributor.entityType, "post");
-  assert.deepEqual(contributor.dependsOn, ["media"]);
+  assert.deepEqual(contributor.dependsOn, ["media", "term"]);
   assert.equal(typeof contributor.build, "function");
 });
 
 test("contributePagePublish returns data only, distinguished from post only by entityType", () => {
   const contributor = contributePagePublish();
   assert.equal(contributor.entityType, "page");
-  assert.deepEqual(contributor.dependsOn, ["media"]);
+  assert.deepEqual(contributor.dependsOn, ["media", "term"]);
 });
 
 test("both built handlers declare the resource's own content.write permission", () => {

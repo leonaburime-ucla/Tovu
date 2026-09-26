@@ -936,7 +936,10 @@ test("real post contributor: created + byte-identical destination", async () => 
   const { InMemoryPostRepo } = await import("../../post/repo.memory.js");
   const { contributePostPublish } = await import("../../post/publish-content.js");
   const { contributeMediaPublish } = await import("../../media/publish-content.js");
+  const { contributeTaxonomyPublish, contributeTermPublish } = await import("../../taxonomy/publish-content.js");
   registerPublishContentContributor(contributeMediaPublish());
+  registerPublishContentContributor(contributeTaxonomyPublish());
+  registerPublishContentContributor(contributeTermPublish());
   registerPublishContentContributor(contributePostPublish());
 
   const workspaceId = "11111111-1111-1111-1111-111111111111";
@@ -960,7 +963,7 @@ test("real post contributor: created + byte-identical destination", async () => 
   const entity: PackedEntity = {
     entityType: "post",
     id: "post-2",
-    schemaVersion: 1,
+    schemaVersion: 2, // post's current version (termIds, plan §3.7)
     contentHash: contentHash("post", newPostState),
     hashVersion: CONTENT_HASH_VERSION,
     requiredBlobs: [],
@@ -981,7 +984,10 @@ test("real post contributor: blocked on a genuine slug collision against a DIFFE
   const { InMemoryPostRepo } = await import("../../post/repo.memory.js");
   const { contributePostPublish } = await import("../../post/publish-content.js");
   const { contributeMediaPublish } = await import("../../media/publish-content.js");
+  const { contributeTaxonomyPublish, contributeTermPublish } = await import("../../taxonomy/publish-content.js");
   registerPublishContentContributor(contributeMediaPublish());
+  registerPublishContentContributor(contributeTaxonomyPublish());
+  registerPublishContentContributor(contributeTermPublish());
   registerPublishContentContributor(contributePostPublish());
 
   const workspaceId = "11111111-1111-1111-1111-111111111111";
@@ -1005,7 +1011,7 @@ test("real post contributor: blocked on a genuine slug collision against a DIFFE
   const entity: PackedEntity = {
     entityType: "post",
     id: "post-2",
-    schemaVersion: 1,
+    schemaVersion: 2, // post's current version (termIds, plan §3.7)
     contentHash: contentHash("post", incomingState),
     hashVersion: CONTENT_HASH_VERSION,
     requiredBlobs: [],

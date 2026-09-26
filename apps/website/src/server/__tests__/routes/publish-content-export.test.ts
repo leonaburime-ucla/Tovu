@@ -182,7 +182,7 @@ test("GET .../publish-content/export streams registered post/page entities for a
   assert.equal(byId.get(page.id)?.entityType, "page");
   for (const entity of bundle.entities) {
     assert.ok(["post", "page"].includes(entity.entityType), `unexpected entityType in bundle: ${entity.entityType}`);
-    assert.equal(entity.schemaVersion, 1);
+    assert.equal(entity.schemaVersion, 2);
     assert.equal(entity.hashVersion, CONTENT_HASH_VERSION);
     assert.equal(typeof entity.contentHash, "string");
   }

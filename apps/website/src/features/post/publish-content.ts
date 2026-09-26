@@ -9,6 +9,7 @@ import type {
   PackedEntity,
   RetireTarget,
 } from "#src/features/publish-content/type-registry";
+import { prepareTermSync, readTermIds, withTermIds } from "#src/features/taxonomy/publish-term-ids";
 
 import { importPostEntity, isTrashed, restorePostForward, retirePostForReplacement, PostConflictError, PostNotFoundError, ROOT_SLUG } from "./post.js";
 import type { PostKind, PostRecord } from "./post.js";
@@ -39,13 +40,12 @@ import type { PostKind, PostRecord } from "./post.js";
 
 /**
  * `post`'s and `page`'s declared prerequisite types (plan §3's own worked example: "post ->
- * [media, term]"). Both share the currently implemented `media` dependency — a Page's body can
- * embed media exactly like a Post's can (same table, same `bodyJson` shape; `PostKind` only changes
- * which admin list surfaces a row — see `post.ts`'s own doc). `term` must be added here only when
- * its real contributor is registered: catalog construction rejects speculative/unregistered
- * dependencies because no safe apply order exists for them.
+ * [media, term]"). A Page's body can embed media exactly like a Post's can (same table, same
+ * `bodyJson` shape; `PostKind` only changes which admin list surfaces a row — see `post.ts`'s own
+ * doc). `term` because the state carries `termIds` (plan §3.7), and assigning one checks the term
+ * exists at write time.
  */
-const POST_AND_PAGE_DEPENDS_ON: readonly string[] = ["media"];
+const POST_AND_PAGE_DEPENDS_ON: readonly string[] = ["media", "term"];
 
 /**
  * Every `PostRecord` field, classified by what this transport DOES with it. This map is the single
@@ -133,8 +133,8 @@ const PACKED_POST_FIELDS = Object.freeze(
 export type PublishablePostState = Pick<PostRecord, (typeof PACKED_POST_FIELDS)[number]>;
 
 /**
- * Projects a `PostRecord` onto {@link PublishablePostState} — the ONE state builder behind `pack`,
- * `inspect` and the content hash.
+ * Projects a `PostRecord` onto {@link PublishablePostState} — the ONE row projection behind `pack`,
+ * `inspect` and the content hash (`buildHandler`'s `stateOf` adds only the row's `termIds`).
  *
  * Undefined optional fields are normalized to `null` so a row whose optional column was never set
  * and one whose column holds SQL `NULL` hash identically across two instances whose adapters
@@ -201,12 +201,23 @@ function toImportableRecord(
  *  any code path currently in flux (this file's own header). */
 function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentHandler {
   const entityType = kind; // "post" | "page" — PostKind's two values are exactly this feature's two entityTypes.
-  const schemaVersion = 1;
+  // 2 = the state may carry `termIds` (plan §3.7). The planner refuses a bundle whose version is not
+  // exactly this, so an instance still on 1 refuses every post/page until it is deployed.
+  const schemaVersion = 2;
   // F2 — `post`'s port, keyed by entityType on the shared bag (`type-registry.ts`'s
   // `PublishContentPorts`). Read once so every function below shares the same narrowing; absent
   // behaves exactly like every other optional port on this interface: `pack`/`inspect`/`precheck`
   // degrade to "nothing to report" (this file's own guards, below), `apply`/`retire` throw loudly.
   const postRepo = deps.ports.post?.repo;
+  // Categories/tags ride inside the post (`taxonomy/publish-term-ids.ts`). Without taxonomy ports a
+  // bag packs and syncs no terms, the same "absent = not part of this bag" rule as every port.
+  const termPorts = deps.ports.term;
+
+  /** The packed state: {@link toPublishableState} plus sorted `termIds`, left out when there are
+   *  none so an untagged row keeps its schemaVersion-1 hash. */
+  async function stateOf(row: PostRecord): Promise<Record<string, unknown>> {
+    return withTermIds(toPublishableState(row), await readTermIds(termPorts, row.kind, row.id));
+  }
 
   async function* pack(): AsyncIterable<PackedEntity> {
     if (!postRepo) return;
@@ -219,17 +230,18 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
       // shipped and then land at the destination as live content, since `deletedAt` is not a field
       // this transport carries.
       if (isTrashed(row)) continue;
+      const state = await stateOf(row);
       yield {
         entityType,
         id: row.id,
         schemaVersion,
-        contentHash: contentHash(entityType, toPublishableState(row)),
+        contentHash: contentHash(entityType, state),
         hashVersion: CONTENT_HASH_VERSION,
         // Blob-reference detection (which media sha256s a body embeds) is Task 12's job (plan §5
         // risk #5: media is not a registered type until ids are preserved) — an empty list here is
         // a disclosed gap, not a silent one; see `PackedEntity.requiredBlobs`'s own doc.
         requiredBlobs: [],
-        state: toPublishableState(row),
+        state,
       };
     }
   }
@@ -238,7 +250,7 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
     if (!postRepo) return null;
     const found = await postRepo.findById({ workspaceId: deps.workspaceId, id });
     if (!found || found.kind !== kind) return null;
-    return { version: found.version, hash: contentHash(entityType, toPublishableState(found)) };
+    return { version: found.version, hash: contentHash(entityType, await stateOf(found)) };
   }
 
   /**
@@ -369,6 +381,16 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
       id: input.entity.id,
       existing: priorPost,
     });
+    // Checked before the post is written, so a missing term or permission blocks the row whole.
+    const terms = await prepareTermSync({
+      ports: termPorts,
+      deps,
+      entityType,
+      entityId: input.entity.id,
+      principalId: input.principalId,
+      contentType: kind,
+      wanted: input.entity.state.termIds,
+    });
 
     const { changeSetId } = await executeCommand({
       deps: gatewayDeps,
@@ -387,8 +409,8 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
           priorPost = await postRepo.findById({ workspaceId: deps.workspaceId, id: input.entity.id });
           return priorPost ? { ...priorPost } : null;
         },
-        execute: () =>
-          importPostEntity({
+        execute: async () => {
+          const imported = await importPostEntity({
             deps: { repo: postRepo, clock: deps.clock, outbox, beforeSaveHook: deps.beforeSaveHook },
             input: {
               workspaceId: deps.workspaceId,
@@ -398,9 +420,14 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
               // own doc. The SOURCE's author travels separately, on `record.createdByPrincipalId`.
               actorId: input.principalId,
             },
-          }),
+          });
+          await terms.apply();
+          return imported;
+        },
         captureEntityVersion: (result) => result.post.version,
         rollback: async () => {
+          // Terms first: Jini resolves the post to (un)assign, and a create's undo deletes it.
+          await terms.revert();
           // Compensating undo for a change-set record that failed AFTER the write landed. An
           // update restores the prior record forward — see `restorePostForward`'s own doc for why
           // "forward" rather than the verbatim restore `command.ts:82` asks for.
@@ -457,7 +484,7 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
       entityType: holder.kind,
       entityId: holder.id,
       entityLabel: holder.title,
-      hash: contentHash(holder.kind, toPublishableState(holder)),
+      hash: contentHash(holder.kind, await stateOf(holder)),
     };
   }
 
@@ -535,7 +562,7 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
           }
           // The apply loop's own re-check runs before this read, outside any lock; checking the
           // hash again here, on the row whose version `execute` pins, closes that gap.
-          if (contentHash(holder.kind, toPublishableState(holder)) !== target.hash) {
+          if (contentHash(holder.kind, await stateOf(holder)) !== target.hash) {
             throw new PostConflictError(`the live ${target.entityType} at this address changed after this run's plan was built`);
           }
           return { deletedAt: holder.deletedAt ?? null };

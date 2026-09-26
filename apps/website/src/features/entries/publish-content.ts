@@ -2,6 +2,8 @@ import { collectBodyReferences } from "#src/features/publish-content/content-ref
 import { tombstonedAtDestination } from "#src/features/publish-content/precheck-reasons";
 import { createRepoPublishHandler, gatewayDeps, okOrThrow } from "#src/features/publish-content/repo-handler";
 import type { EntryPublishPorts, PublishContentContributor } from "#src/features/publish-content/type-registry";
+import { prepareTermSync, readTermIds } from "#src/features/taxonomy/publish-term-ids";
+import { ContentRecordNotFoundError, TaxonomyNotApplicableError, TermRecordNotFoundError } from "#src/features/taxonomy/index";
 
 import {
   ContentTypeNotActiveError,
@@ -21,22 +23,38 @@ import type { TrashableEntryRecord } from "./trash-aware-memory-repo.js";
  * (their own types). Keeps the source's id (Jini's `importEntry`), addressed by `(type, slug)`.
  *
  * `fieldsJson` travels whole: Tovu only ever writes the `ext.site` namespace, so there is nothing
- * else in it to leave behind. Term assignments (categories/tags) do NOT travel yet — writing them
- * needs a `contentTypeTaxonomyPolicy` nothing wires; that is a follow-up (schemaVersion 2).
+ * else in it to leave behind. Term assignments (categories/tags) travel as `termIds`
+ * (`taxonomy/publish-term-ids.ts`); the publish ports' `contentTypeTaxonomyPolicy` admits them for
+ * any live collection.
  */
 
 const WIDGET_TYPES = ["widget", "widget_area"];
 
+/** An entry row plus its sorted term ids (`undefined` when it has none). */
+type EntryRow = TrashableEntryRecord & { termIds?: string[] };
+
+const withTerms = async (p: EntryPublishPorts, row: TrashableEntryRecord): Promise<EntryRow> => ({
+  ...row,
+  termIds: await readTermIds(p.terms, row.type, row.id),
+});
+
 export const contributeCollectionEntryPublish = (): PublishContentContributor =>
-  createRepoPublishHandler<TrashableEntryRecord, EntryPublishPorts>({
+  createRepoPublishHandler<EntryRow, EntryPublishPorts>({
     entityType: "collection-entry",
+    // 2 = the state may carry `termIds`. Exact-match, so an instance built before this refuses.
+    schemaVersion: 2,
     permission: "admin.collections.manage",
-    // Only the owning type is checked at write time; media and relation ids resolve at render.
-    dependsOn: ["content-type"],
+    // The owning type and assigned terms are checked at write time; media and relation ids resolve at render.
+    dependsOn: ["content-type", "term"],
     ports: (deps) => deps.ports["collection-entry"],
-    list: async (p, workspaceId) =>
-      (await p.entries.listByWorkspaceExcludingTypes({ workspaceId, excludeTypes: WIDGET_TYPES })).map((row) => ({ ...row, deletedAt: null })),
-    find: (p, workspaceId, id) => p.entries.findAnyById({ workspaceId, id }),
+    list: async (p, workspaceId) => {
+      const rows = await p.entries.listByWorkspaceExcludingTypes({ workspaceId, excludeTypes: WIDGET_TYPES });
+      return Promise.all(rows.map((row) => withTerms(p, { ...row, deletedAt: null })));
+    },
+    find: async (p, workspaceId, id) => {
+      const row = await p.entries.findAnyById({ workspaceId, id });
+      return row ? withTerms(p, row) : null;
+    },
     isTrashed: (row) => row.deletedAt !== null,
     fields: {
       type: "transferred",
@@ -45,6 +63,7 @@ export const contributeCollectionEntryPublish = (): PublishContentContributor =>
       status: "transferred",
       bodyJson: "transferred",
       fieldsJson: "transferred",
+      termIds: "transferred",
       publishedAt: "provenance",
       createdAt: "provenance",
       id: "local",
@@ -53,6 +72,7 @@ export const contributeCollectionEntryPublish = (): PublishContentContributor =>
       version: "local",
       deletedAt: "local",
     },
+    omitWhenAbsent: ["termIds"],
     address: {
       field: "slug",
       // Trash included: a trashed row keeps its slug (`entries_workspace_type_slug_unique`).
@@ -68,6 +88,16 @@ export const contributeCollectionEntryPublish = (): PublishContentContributor =>
     },
     write: async ({ ports, deps, workspaceId, id, state, expectedVersion, principalId }) => {
       const gateway = gatewayDeps(deps, "collection-entry");
+      // Checked before the entry is written, so a missing term or permission blocks the row whole.
+      const terms = await prepareTermSync({
+        ports: ports.terms,
+        deps,
+        entityType: "collection-entry",
+        entityId: id,
+        principalId,
+        contentType: state.type as string,
+        wanted: state.termIds,
+      });
       const saved = okOrThrow(
         await importEntry({
           deps: {
@@ -92,10 +122,21 @@ export const contributeCollectionEntryPublish = (): PublishContentContributor =>
           },
         })
       );
+      await terms.apply();
       return { version: saved.entry.version };
     },
     errors: {
       conflict: [VersionConflictError],
-      blocked: [ForbiddenError, ContentTypeNotFoundError, ContentTypeNotActiveError, EntryFieldValidationError, EntrySlugConflictError],
+      blocked: [
+        ForbiddenError,
+        ContentTypeNotFoundError,
+        ContentTypeNotActiveError,
+        EntryFieldValidationError,
+        EntrySlugConflictError,
+        // Term sync, when the destination changed between its pre-check and the assignment.
+        TermRecordNotFoundError,
+        ContentRecordNotFoundError,
+        TaxonomyNotApplicableError,
+      ],
     },
   });

@@ -589,8 +589,10 @@ export interface ContentTaxonomyDeps {
    * with `AssignmentCountEntryTermRepoPort` for the `deleteTaxonomy`/`deleteTerm` guard, and again
    * with `UnassignableEntryTermRepoPort` for `taxonomy_unassign_terms` (A2, taxonomy plan) — both
    * `SqliteEntryTermRepo` (real) and `InMemoryEntryTermRepo` (`@jini-ai/cms/taxonomy`, hermetic)
-   * already implement it, so this widening breaks neither composition's typecheck. */
-  entryTermRepo: EntryTermRepoPort & MergeableEntryTermRepoPort & AssignmentCountEntryTermRepoPort & UnassignableEntryTermRepoPort;
+   * already implement it, so this widening breaks neither composition's typecheck. Widened with
+   * `EntryTermReadPort` for publishing's post/page/entry `termIds` (`taxonomy/publish-term-ids.ts`):
+   * both composition roots now wire `SqliteEntryTermRepo`, which implements it. */
+  entryTermRepo: EntryTermRepoPort & MergeableEntryTermRepoPort & AssignmentCountEntryTermRepoPort & UnassignableEntryTermRepoPort & EntryTermReadPort;
   /**
    * Public-render read path (2026-09-02 taxonomy render-surface gap fix, `repo.sqlite.ts`'s
    * `EntryTermReadPort`) — resolves the terms assigned to a page/post for `pages.ts`'s

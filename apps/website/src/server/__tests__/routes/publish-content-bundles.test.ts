@@ -55,7 +55,7 @@ function validBundleBody(overrides: Partial<Record<string, unknown>> = {}): Reco
       {
         entityType: "post",
         id: "p-1",
-        schemaVersion: 1,
+        schemaVersion: 2,
         contentHash: "abc",
         hashVersion: CONTENT_HASH_VERSION,
         requiredBlobs: [],
@@ -157,10 +157,10 @@ test("POST .../publish-content/bundles explicitly rejects unknown artifact and e
   const unknownSchema = await fetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify(validBundleBody({ entities: [{ ...entity, schemaVersion: 2 }] })),
+    body: JSON.stringify(validBundleBody({ entities: [{ ...entity, schemaVersion: 1 }] })),
   });
   assert.equal(unknownSchema.status, 400);
-  assert.match(await unknownSchema.text(), /unsupported schemaVersion 2 for entity type 'post'/);
+  assert.match(await unknownSchema.text(), /unsupported schemaVersion 1 for entity type 'post'; this instance supports 2/);
 });
 
 test("a staged bundle is retrievable via the real repo wiring, and ignores a caller-supplied expiresAt-like field", async (t) => {

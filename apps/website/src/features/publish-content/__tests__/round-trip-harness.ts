@@ -1,7 +1,15 @@
 import { InMemoryChangeSetRepo } from "#src/contracts/core/commands/index";
 import { InMemoryOutbox } from "#src/contracts/core/events/index";
 
+import { InMemoryContentTypeRepo, NoopContentTypeIndexProvisioner } from "#src/features/content-types/index";
+import { SqliteEntryRepo } from "#src/features/entries/repo.sqlite";
+import { SqliteFormDefinitionRepo } from "#src/features/forms/repo.sqlite";
+import { SqlitePostRepo } from "#src/features/post/index";
+import { SqliteEntryTermRepo, SqliteTaxonomyRepo, SqliteTaxonomyRevisionRepo, SqliteTermRepo } from "#src/features/taxonomy/repo.sqlite";
+import { openContentDb } from "#src/platform/db/sqlite/content-db";
+
 import { PUBLISH_CONTENT_ARTIFACT_FORMAT_VERSION } from "../artifact-format.js";
+import { buildContentPublishPorts } from "../content-ports.js";
 import { CONTENT_HASH_VERSION } from "../content-hash.js";
 import { entityKey, planImport, type PublishContentReport } from "../planner.js";
 import {
@@ -87,7 +95,8 @@ export async function plan(entities: readonly PackedEntity[], destination: Publi
   );
 }
 
-/** Applies every writing row of `report` in its apply order; `expectedVersion` from `inspect()`. */
+/** Applies every writing row of `report` in its apply order; `expectedVersion` from `inspect()`. The
+ *  idempotency key names the content hash, as the apply loop's does, so a later edit re-applies. */
 export async function applyReport(report: PublishContentReport, entities: readonly PackedEntity[], destination: PublishContentDeps): Promise<void> {
   const { handlerByType } = buildPublishContentCatalog(destination);
   const byKey = new Map(entities.map((e) => [entityKey(e.entityType, e.id), e] as const));
@@ -97,7 +106,7 @@ export async function applyReport(report: PublishContentReport, entities: readon
     const entity = byKey.get(entityKey(row.entityType, row.entityId))!;
     // As `apply-loop.ts`: a `created` row is always a create; otherwise the freshly read version.
     const expectedVersion = row.outcome === "created" ? undefined : (await handler.inspect(entity.id))?.version;
-    await handler.apply({ entity, expectedVersion, principalId: "owner", idempotencyKey: `idem-${row.entityType}-${row.entityId}` });
+    await handler.apply({ entity, expectedVersion, principalId: "owner", idempotencyKey: `idem-${row.entityType}-${row.entityId}-${entity.contentHash}` });
   }
 }
 
@@ -108,4 +117,44 @@ export async function roundTrip(source: PublishContentDeps, destination: Publish
   await applyReport(first, entities, destination);
   const second = await plan(await packAll(source), destination);
   return { entities, first, second, destinationPack: await packAll(destination) };
+}
+
+/** A never-read port: throws if a test path touches it. */
+function unused<T extends object>(label: string): T {
+  return new Proxy({}, { get: () => { throw new Error(`round-trip-harness: '${label}' is not wired`); } }) as T;
+}
+
+/** One SQLite `content.db` in memory with its repos, and the factory ports every real root builds
+ *  from them (`buildContentPublishPorts`), plus `post`. Widget/entry-ref ports are not wired. */
+export function sqliteContentSite() {
+  const db = openContentDb(":memory:");
+  const workspaceId = WORKSPACE_ID;
+  const repos = {
+    db,
+    posts: new SqlitePostRepo(db),
+    entries: new SqliteEntryRepo(db),
+    contentTypes: new InMemoryContentTypeRepo(),
+    taxonomies: new SqliteTaxonomyRepo({ db, workspaceId }),
+    terms: new SqliteTermRepo({ db, workspaceId }),
+    entryTerms: new SqliteEntryTermRepo({ db, workspaceId }),
+  };
+  const ports: Partial<PublishContentPorts> = {
+    post: { repo: repos.posts, forgetRemoved: async () => {}, remove: unused("post.remove") },
+    ...buildContentPublishPorts({
+      formDefinitionRepo: new SqliteFormDefinitionRepo(db),
+      contentTypeRepo: repos.contentTypes,
+      contentTypeIndexProvisioner: new NoopContentTypeIndexProvisioner(),
+      workspaceId,
+      postRepo: repos.posts,
+      taxonomyRepo: repos.taxonomies,
+      termRepo: repos.terms,
+      entryTermRepo: repos.entryTerms,
+      taxonomyRevisionRepo: new SqliteTaxonomyRevisionRepo({ db, workspaceId }),
+      stampWatermark: () => {},
+      entryRepo: repos.entries,
+      entryRefsRepo: unused("entryRefsRepo"),
+      widgetBindingRepo: unused("widgetBindingRepo"),
+    }),
+  };
+  return { ...repos, ports };
 }

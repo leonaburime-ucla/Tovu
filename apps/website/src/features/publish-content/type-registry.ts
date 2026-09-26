@@ -6,6 +6,7 @@ import type { FormDefinitionRepoPort } from "#src/features/forms/index";
 import type { ContentTypeListPort, ContentTypeRepoPort, IndexProvisionerPort } from "#src/features/content-types/index";
 import type {
   ContentLookupPort,
+  ContentTypeTaxonomyPolicyPort,
   EntryTermRepoPort,
   ImportableTaxonomyRepoPort,
   ImportableTermRepoPort,
@@ -14,8 +15,9 @@ import type {
   TaxonomyRevisionRepoPort,
   TermListPort,
   TermRepoPort,
+  UnassignableEntryTermRepoPort,
 } from "#src/features/taxonomy/index";
-import type { TaxonomyPublishReadPort, TermPublishReadPort } from "#src/features/taxonomy/repo.sqlite";
+import type { EntryTermReadPort, TaxonomyPublishReadPort, TermPublishReadPort } from "#src/features/taxonomy/repo.sqlite";
 import type { EntryListPort, EntryRepoPort } from "#src/features/entries/index";
 import type { EntryRefsRepoPort } from "#src/contracts/core/entry-refs/ports";
 import type { WidgetRegionBindingRepoPort } from "#src/features/widgets/ports";
@@ -158,10 +160,12 @@ export interface WidgetPublishPorts {
   readonly forms: FormDefinitionRepoPort;
 }
 
-/** `collection-entry`'s bag: the entry repo (trash-inclusive read) and the owning-type lookup. */
+/** `collection-entry`'s bag: the entry repo (trash-inclusive read), the owning-type lookup and the term bag. */
 export interface EntryPublishPorts {
   readonly entries: EntryRepoPort & EntryListExcludingTypesPort & EntryPublishReadPort;
   readonly contentTypes: ContentTypeRepoPort;
+  /** An entry's categories/tags (`termIds`) read and sync through the taxonomy bag. */
+  readonly terms: TaxonomyPublishPorts;
 }
 
 /** `taxonomy` and `term` share one bag: the Jini taxonomy write-service deps, minus the gateway
@@ -169,10 +173,14 @@ export interface EntryPublishPorts {
 export interface TaxonomyPublishPorts {
   readonly taxonomies: TaxonomyRepoPort & TaxonomyListPort & ImportableTaxonomyRepoPort & TaxonomyPublishReadPort;
   readonly terms: TermRepoPort & TermListPort & ImportableTermRepoPort & TermPublishReadPort;
-  readonly entryTerms: EntryTermRepoPort;
+  /** Also read and unassigned: post/page/entry `termIds` sync through these (`taxonomy/publish-term-ids.ts`). */
+  readonly entryTerms: EntryTermRepoPort & UnassignableEntryTermRepoPort & EntryTermReadPort;
   readonly revisions: TaxonomyRevisionRepoPort;
   readonly stampWatermark: () => void;
+  /** Resolves posts/pages and collection entries (Jini `createContentLookup`). */
   readonly contentLookup: ContentLookupPort;
+  /** Which collection types take terms: every live one (`content-ports.ts`). */
+  readonly contentTypeTaxonomyPolicy: ContentTypeTaxonomyPolicyPort;
 }
 
 /**

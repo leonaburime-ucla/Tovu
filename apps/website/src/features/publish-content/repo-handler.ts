@@ -74,6 +74,9 @@ export interface RepoPublishTypeConfig<Row, Ports> {
 
   /** Every field of `Row`, so a new column fails to compile until classified. */
   readonly fields: Record<Extract<keyof Row, string>, FieldDisposition>;
+  /** Fields left out of the state while `undefined` (instead of packed as `null`), so a field added
+   *  later keeps every existing hash of a row that has no value for it (e.g. `termIds`). */
+  readonly omitWhenAbsent?: readonly string[];
   /** Only for a MIGRATED type whose existing `contentHash` must stay byte-identical (plan §7): replaces
    *  the default hash input (the `"transferred"` fields). A new type never sets it. */
   readonly legacyHashState?: (row: Row, packedState: Record<string, unknown>) => Record<string, unknown>;
@@ -143,9 +146,15 @@ export function createRepoPublishHandler<Row, Ports>(config: RepoPublishTypeConf
   const packedFields = fieldsWhere((d) => d !== "local");
   const hashedFields = fieldsWhere((d) => d === "transferred");
 
-  /** Missing values become `null`, so an unset column and SQL `NULL` pack and hash alike. */
+  /** Missing values become `null`, so an unset column and SQL `NULL` pack and hash alike, except an
+   *  `omitWhenAbsent` field, which is left out. */
+  const omittable = new Set(config.omitWhenAbsent ?? []);
   const pick = (row: Row, fields: readonly string[]) =>
-    Object.fromEntries(fields.map((field) => [field, (row as Record<string, unknown>)[field] ?? null]));
+    Object.fromEntries(
+      fields
+        .filter((field) => !(omittable.has(field) && (row as Record<string, unknown>)[field] === undefined))
+        .map((field) => [field, (row as Record<string, unknown>)[field] ?? null])
+    );
   const hashOf = (row: Row) =>
     contentHash(entityType, config.legacyHashState ? config.legacyHashState(row, pick(row, packedFields)) : pick(row, hashedFields));
 
