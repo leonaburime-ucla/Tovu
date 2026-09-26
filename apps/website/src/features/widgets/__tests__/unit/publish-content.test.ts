@@ -4,6 +4,7 @@ import test from "node:test";
 import { InMemoryEntryRefsRepo } from "#src/contracts/core/entry-refs/repo.memory";
 import { InMemoryOutbox } from "#src/contracts/core/events/index";
 import { InMemoryContentTypeRepo } from "#src/features/content-types/index";
+import { InMemoryFormDefinitionRepo } from "#src/features/forms/repo.memory";
 import { TrashAwareInMemoryEntryRepo } from "#src/features/entries/trash-aware-memory-repo";
 import { applyReport, makeSite, packAll, plan, registerOnly, roundTrip, WORKSPACE_ID } from "#src/features/publish-content/__tests__/round-trip-harness";
 import { contributeWidgetAreaPublish, contributeWidgetPublish } from "../../publish-content.js";
@@ -17,6 +18,7 @@ function instance(name: string) {
     contentTypes: new InMemoryContentTypeRepo(),
     entryRefs: new InMemoryEntryRefsRepo(),
     bindings: new InMemoryWidgetRegionBindingRepo(),
+    forms: new InMemoryFormDefinitionRepo(),
   };
   let n = 0;
   const service = {
@@ -54,7 +56,7 @@ test("widget + widget-area round trip: widgets first with their ids, the region'
   const { dst, a, b, placements, src } = await sites();
   const { first, second } = await roundTrip(src.site, dst.site);
 
-  assert.deepEqual(first.applyOrder.slice(0, 2), ["widget", "widget-area"]);
+  assert.deepEqual(first.applyOrder.filter((t) => t.startsWith("widget")), ["widget", "widget-area"]);
   assert.deepEqual(first.rows.map((r) => [r.entityType, r.entityId, r.outcome]).sort(), [
     ["widget", a.id, "created"],
     ["widget", b.id, "created"],
@@ -96,10 +98,35 @@ test("widget: a trashed destination widget with the same id is refused at preche
   assert.match(refused?.reason ?? "", /trash/i);
 });
 
+test("widget: a trashed destination widget holding the same slug under another id is refused at precheck", async () => {
+  const { src, dst, a } = await sites();
+  const { instance: old } = await createWidgetInstance({
+    deps: dst.service,
+    input: { workspaceId: WORKSPACE_ID, actor: { principalId: "owner" }, widgetType: "text", title: "Old", config: { body: "x" }, slug: "about" },
+  });
+  const row = await dst.ports.entries.findAnyById({ workspaceId: WORKSPACE_ID, id: old.id });
+  assert.ok(row);
+  await dst.ports.entries.saveAny({ ...row, deletedAt: "2026-09-02T00:00:00.000Z" });
+
+  const refused = (await plan(await packAll(src.site), dst.site)).rows.find((r) => r.entityId === a.id);
+  assert.equal(refused?.outcome, "blocked");
+  assert.match(refused?.reason ?? "", new RegExp(`^widget '${old.id}' is in the trash at this destination and still holds slug 'about'`));
+});
+
 test("widget-area: a region the destination binds after the plan is a conflict", async () => {
   const { src, dst } = await sites();
   const entities = await packAll(src.site);
   const report = await plan(entities, dst.site);
   await bindWidgetArea({ deps: dst.service, input: { workspaceId: WORKSPACE_ID, regionKey: "sidebar" } });
   await assert.rejects(applyReport(report, entities, dst.site), (err: Error & { rowOutcome?: string }) => err.rowOutcome === "conflict");
+});
+
+test("widget-area: a placement naming a widget the destination lacks is blocked and leaves no empty area bound behind", async () => {
+  const { src, dst } = await sites();
+  const entities = (await packAll(src.site)).filter((e) => e.entityType === "widget-area");
+  const report = await plan(entities, dst.site);
+
+  await assert.rejects(applyReport(report, entities, dst.site), (err: Error & { rowOutcome?: string }) => err.rowOutcome === "blocked");
+  assert.equal(await dst.ports.bindings.findByRegion({ workspaceId: WORKSPACE_ID, regionKey: "sidebar" }), null);
+  assert.deepEqual(await dst.ports.entries.listByWorkspace({ workspaceId: WORKSPACE_ID, type: "widget_area" }), []);
 });

@@ -49,6 +49,7 @@ export function buildContentPublishPorts(sources: ContentPublishSources): Pick<P
     contentTypes: sources.contentTypeRepo,
     entryRefs: sources.entryRefsRepo,
     bindings: sources.widgetBindingRepo,
+    forms: sources.formDefinitionRepo,
   };
   return {
     taxonomy,

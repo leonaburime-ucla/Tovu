@@ -154,6 +154,8 @@ export interface WidgetPublishPorts {
   readonly contentTypes: ContentTypeRepoPort;
   readonly entryRefs: EntryRefsRepoPort;
   readonly bindings: WidgetRegionBindingRepoPort;
+  /** A `contact-form` widget names its form by id; the form travels by slug (`widgets/publish-content.ts`). */
+  readonly forms: FormDefinitionRepoPort;
 }
 
 /** `collection-entry`'s bag: the entry repo (trash-inclusive read) and the owning-type lookup. */

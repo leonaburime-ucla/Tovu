@@ -185,7 +185,7 @@ export interface MutateWidgetAreaPlacementsRequired {
 
 /** REQ-16/AC-10: every referenced widgetEntryId must exist, be a live (non-trashed) widget instance,
  *  in this same workspace — checked before any write. Throws the first violation found. */
-async function validatePlacementWidgetsExist(
+export async function validatePlacementWidgetsExist(
   deps: RegionAreaServiceDeps,
   workspaceId: UUID,
   placements: readonly WidgetPlacementNode[]
