@@ -9,12 +9,21 @@
  * type whose `apply()` throws would turn a correct refusal into a live bug — so the last test below
  * is not a spelling check on the registry list: it BUILDS the registered media contributor and
  * applies a real entity through it, which is the property that actually makes the registration safe.
+ *
+ * G5 (`plan-publish-all-types-2026-09-25.md` §5): the live site's own publish grant
+ * (`deploy/publish-trust.json`) hand-lists which types it accepts and refuses `'*'` (`grant.ts`'s
+ * `parseEntityTypes`) — a type registered here but missing from that file exports and plans locally
+ * but is refused as "not supported by live" the moment it reaches a real destination. The last test
+ * below fails, naming the missing type, whenever a registered contributor's `entityType` is absent
+ * from every grant's `entityTypes` in the committed file — so adding a type and forgetting the grant
+ * entry fails CI instead of shipping a type that plans but can never actually publish.
  */
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { InMemoryChangeSetRepo } from "#src/contracts/core/commands/index";
 import { InMemoryOutbox } from "#src/contracts/core/events/index";
@@ -283,4 +292,30 @@ test("the registered theme-files contributor's apply() is a real write path, not
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("every registered publish-content type is listed in the committed live grant (deploy/publish-trust.json)", async () => {
+  installFirstPartyPublishContentTypes();
+  const registeredTypes = listPublishContentContributors().map((c) => c.entityType);
+
+  const grantPath = path.resolve(
+    fileURLToPath(new URL(".", import.meta.url)),
+    "../../../../../../../deploy/publish-trust.json"
+  );
+  const grants = JSON.parse(await readFile(grantPath, "utf8")) as ReadonlyArray<{
+    readonly entityTypes: readonly string[];
+  }>;
+  // Union across every grant, not just the first: any grant accepting a type is enough for that
+  // type to be usable from at least one source, and this test only cares whether the type is
+  // reachable at all, not by which grant.
+  const grantedTypes = new Set(grants.flatMap((grant) => grant.entityTypes));
+
+  const missing = registeredTypes.filter((entityType) => !grantedTypes.has(entityType));
+  assert.deepEqual(
+    missing,
+    [],
+    `type(s) registered with installFirstPartyPublishContentTypes() but missing from every grant's ` +
+      `'entityTypes' in deploy/publish-trust.json: ${missing.join(", ")}. The live site will refuse ` +
+      `these as "not supported" until the grant is updated and redeployed.`
+  );
 });
