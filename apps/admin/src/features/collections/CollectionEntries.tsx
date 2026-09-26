@@ -4,6 +4,7 @@ import { agentHandle } from "@jini-ai/agentic";
 import { buildAgentListHandles } from "../../lib/agent-list-handles";
 import { useWiredCollectionEntries } from "./hooks/use-collection-entries.hooks";
 import { ServerLabel } from "@/components/status-labels";
+import { PublishSectionButton } from "../publish-content/PublishSectionButton";
 
 /**
  * @file Collections' entries list (design-spec.md §1.4) — the `/admin/collections/{typeKey}` route.
@@ -70,6 +71,7 @@ export function CollectionEntries({ contentTypeKey, useCollectionEntriesHook = u
           </p>
         </div>
         <div className="page-actions">
+          <PublishSectionButton section="collections" />
           {/* Real navigation to the editor route, not a handler — a plain `<a>`, not a `<button>`
               nested inside one (invalid HTML with undefined activation behaviour: a `<button>` has
               no `href` of its own, so which element the browser actually activates on click/Enter/

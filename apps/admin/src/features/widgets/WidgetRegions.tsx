@@ -2,6 +2,7 @@ import { DataTable } from "@jini-ai/admin/react";
 import { agentHandle } from "@jini-ai/agentic";
 import { buildAgentListHandles } from "../../lib/agent-list-handles";
 import { useWiredWidgetRegions } from "./hooks/use-widget-regions.hooks";
+import { PublishSectionButton } from "../publish-content/PublishSectionButton";
 
 /**
  * @file `WidgetRegionsScreen` (`ui.spec.md` §2.4/§3.6/§4.5/§9) — `/admin/widgets/regions` — markup
@@ -76,6 +77,7 @@ export function WidgetRegions({ useWidgetRegionsHook = useWiredWidgetRegions }: 
           </p>
         </div>
         <div className="page-header-actions page-actions">
+          <PublishSectionButton section="widgets" />
           <input
             value={newRegionKey}
             onChange={(e) => setNewRegionKey(e.target.value)}

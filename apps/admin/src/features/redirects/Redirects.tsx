@@ -233,7 +233,7 @@ export function Redirects({ useRedirectsHook = useWiredRedirects }: RedirectsPro
           </p>
         </div>
         <div className="page-actions">
-          <PublishSectionButton entityType="redirect" />
+          <PublishSectionButton section="redirects" />
         </div>
       </div>
       {error ? <div className="notice error">{describeApiError(error, "request failed")}</div> : null}

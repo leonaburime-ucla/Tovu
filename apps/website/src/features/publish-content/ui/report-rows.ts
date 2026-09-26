@@ -1,4 +1,5 @@
 import type { PublishContentOutcomeRow, PublishContentReport } from "./contract.js";
+import { publishEntityTypeLabel } from "./sections.js";
 
 /**
  * @file Task 11 — turning a `PublishContentReport` into the rows the Publish Content dialog
@@ -43,7 +44,7 @@ export interface PublishReportRow {
   readonly key: string;
   readonly entityType: string;
   /** What the TYPE column reads — a short plain word for every registered handler
-   *  ({@link ENTITY_TYPE_LABEL}), or {@link entityType} itself for one this file has not seen yet
+   *  (`sections.ts`), or {@link entityType} itself for one this file has not seen yet
    *  (degraded, never blank, same fallback shape as {@link entityLabel}'s own short-id floor). */
   readonly entityTypeLabel: string;
   readonly entityId: string;
@@ -445,22 +446,11 @@ function usedByNoteFor(includedFor: readonly string[]): string | null {
 }
 
 /** The registered `PublishContentHandler.entityType` ids, named for an owner rather than a
- *  developer — `"theme-files"` reads "Theme" (the plan-time tier/id split is an implementation
- *  detail no operator needs), every other id already has an obvious plain form. A type not listed
- *  here (a future handler this file has not seen yet) falls back to its own raw id in
- *  {@link entityTypeLabelFor} rather than failing — degraded, never wrong. */
-const ENTITY_TYPE_LABEL: Readonly<Record<string, string>> = {
-  post: "Post",
-  page: "Page",
-  media: "Media",
-  menu: "Menu",
-  redirect: "Redirect",
-  "theme-files": "Theme",
-};
-
-/** @complexity O(1). */
+ *  developer (`"theme-files"` reads "Theme"), from the one section table (`sections.ts`) the
+ *  section buttons also read. An unlisted type falls back to its raw id — degraded, never wrong.
+ *  @complexity O(sections). */
 function entityTypeLabelFor(entityType: string): string {
-  return ENTITY_TYPE_LABEL[entityType] ?? entityType;
+  return publishEntityTypeLabel(entityType);
 }
 
 const DISPOSITION_BY_OUTCOME: Readonly<Record<PublishContentOutcomeRow["outcome"], PublishRowDisposition>> = {

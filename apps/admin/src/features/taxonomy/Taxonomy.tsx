@@ -9,6 +9,7 @@ import { useWiredMergeTermSection } from "./hooks/use-merge-term-section.hooks";
 import { useWiredTermDetailPanel } from "./hooks/use-term-detail-panel.hooks";
 import { useWiredTaxonomy } from "./hooks/use-taxonomy.hooks";
 import { ServerLabel } from "@/components/status-labels";
+import { PublishSectionButton } from "../publish-content/PublishSectionButton";
 
 /**
  * @file Categories & Tags screen (design-spec.md §2, ADR-044) — the `/admin/taxonomy` route.
@@ -482,6 +483,7 @@ function TaxonomyPageHeader({ formOpen, setFormOpen, t }: TaxonomyPageHeaderProp
       {/* Same `formOpen` toggle idiom as `Integrations.tsx`'s "Add webhook" button — see
           `useTaxonomy`'s own comment for why this replaced the old always-open form. */}
       <div className="page-actions">
+        <PublishSectionButton section="categories" />
         <button
           className={formOpen ? "btn-secondary" : undefined}
           onClick={() => setFormOpen((v) => !v)}

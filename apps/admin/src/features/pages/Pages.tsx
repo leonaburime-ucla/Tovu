@@ -163,7 +163,7 @@ export function Pages(props: PagesProps) {
           <p className="page-description">{t("Manage every standalone page on this site.")}</p>
         </div>
         <div className="page-actions">
-          <PublishSectionButton entityType="page" />
+          <PublishSectionButton section="pages" />
           {activeTab === "mine" ? (
             <button
               onClick={createPage}

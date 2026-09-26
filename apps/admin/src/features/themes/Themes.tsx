@@ -583,7 +583,7 @@ export function Themes({ useThemesHook = useWiredThemes, tabId, basePath = "/the
           </p>
         </div>
         <div className="page-actions">
-          <PublishSectionButton entityType="theme-files" />
+          <PublishSectionButton section="themes" />
         </div>
       </div>
       <ThemesToolbar

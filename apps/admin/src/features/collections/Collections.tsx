@@ -8,6 +8,7 @@ import { ServerLabel } from "@/components/status-labels";
 import { useWiredNewContentTypeDialog } from "./hooks/use-new-content-type-dialog.hooks";
 import { useWiredEditFieldsDialog } from "./hooks/use-edit-fields-dialog.hooks";
 import { useLifecycleConfirmDialog } from "./hooks/use-lifecycle-confirm-dialog.hooks";
+import { PublishSectionButton } from "../publish-content/PublishSectionButton";
 
 /**
  * @file Collections screen (design-spec.md §1, ADR-022/ADR-043) — the `/admin/collections`
@@ -546,6 +547,7 @@ export function Collections({ useCollectionsHook = useWiredCollections }: Collec
           <p className="page-description">{t("Content types you define, each with its own set of entries.")}</p>
         </div>
         <div className="page-actions">
+          <PublishSectionButton section="collections" />
           <button
             onClick={() => setShowNewDialog(true)}
             {...agentHandle("collections-new", { role: "button", label: "Define a new content type" })}

@@ -6,6 +6,7 @@ import { buildAgentListHandles } from "../../lib/agent-list-handles";
 import { widgetTypeLabel } from "./rules";
 import { useWiredWidgetsLibrary } from "./hooks/use-widgets-library.hooks";
 import { ServerLabel } from "@/components/status-labels";
+import { PublishSectionButton } from "../publish-content/PublishSectionButton";
 
 /**
  * @file `WidgetsLibraryScreen` (`ui.spec.md` §2.1/§3.1/§4.1) — the widget library/list screen,
@@ -104,6 +105,7 @@ export function WidgetsLibrary({ useWidgetsLibraryHook = useWiredWidgetsLibrary 
           </p>
         </div>
         <div className="page-actions">
+          <PublishSectionButton section="widgets" />
           <a
             href="/admin/widgets/regions"
             {...agentHandle("widgets-regions-link", { role: "link", label: "Go to Widget Regions" })}

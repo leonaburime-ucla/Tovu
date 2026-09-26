@@ -1275,7 +1275,7 @@ function MediaPageShell({
           <p className="page-description">{t("Upload and manage image and video assets used across the site.")}</p>
         </div>
         <div className="page-actions">
-          <PublishSectionButton entityType="media" />
+          <PublishSectionButton section="media" />
         </div>
       </div>
 

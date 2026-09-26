@@ -2,7 +2,7 @@ import { agentHandle } from "@jini-ai/agentic";
 
 import {
   usePublishSectionButton,
-  type PublishSectionEntityType,
+  type PublishSectionId,
 } from "./hooks/use-publish-section-button.hooks";
 
 /**
@@ -13,20 +13,20 @@ import {
  * call live in `use-publish-section-button.hooks.ts`.
  */
 export interface PublishSectionButtonProps {
-  /** Which publishable section this button opens the dialog scoped to. */
-  entityType: PublishSectionEntityType;
+  /** Which publishable section (`PUBLISH_SECTIONS`) this button opens the dialog scoped to. */
+  section: PublishSectionId;
 }
 
-export function PublishSectionButton({ entityType }: PublishSectionButtonProps) {
-  const { label, onClick } = usePublishSectionButton(entityType);
+export function PublishSectionButton({ section }: PublishSectionButtonProps) {
+  const { label, onClick } = usePublishSectionButton(section);
   return (
     <button
       type="button"
       className="btn-secondary"
       onClick={onClick}
-      {...agentHandle(`publish-section-${entityType}`, {
+      {...agentHandle(`publish-section-${section}`, {
         role: "button",
-        label: `Publish ${entityType} to the live site`,
+        label: `Publish ${section} to the live site`,
       })}
     >
       {label}

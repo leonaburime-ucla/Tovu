@@ -105,7 +105,7 @@ export function Posts({ usePostsHook = useWiredPosts }: PostsProps) {
           <p className="page-description">{t("Manage and publish every post on this site.")}</p>
         </div>
         <div className="page-actions">
-          <PublishSectionButton entityType="post" />
+          <PublishSectionButton section="posts" />
           <button
             onClick={createPost}
             disabled={creating}

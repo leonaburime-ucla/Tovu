@@ -34,7 +34,7 @@ export function Menus({ useMenusHook = useWiredMenus }: MenusProps = {}) {
           <p className="page-description">{t("Build navigation menus for your theme's header and footer.")}</p>
         </div>
         <div className="page-actions">
-          <PublishSectionButton entityType="menu" />
+          <PublishSectionButton section="menus" />
           <a className="btn-primary" href="/admin/menus/new">
             {t("Add New")}
           </a>

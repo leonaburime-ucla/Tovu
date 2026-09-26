@@ -5,6 +5,7 @@ import { buildAgentListHandles } from "../../lib/agent-list-handles";
 import { formRowMenuItems } from "./rules";
 import { useWiredFormsList } from "./hooks/use-forms-list.hooks";
 import { RecipientLabel, ServerLabel } from "@/components/status-labels";
+import { PublishSectionButton } from "../publish-content/PublishSectionButton";
 
 /**
  * @file Forms list screen (SPEC-010 ui.spec.md §2.1/§3.1) — the `/admin/forms` route.
@@ -73,6 +74,7 @@ export function FormsList({ useFormsListHook = useWiredFormsList }: FormsListPro
           <p className="page-description">{t("Manage the forms embedded across the site and their submissions.")}</p>
         </div>
         <div className="page-actions">
+          <PublishSectionButton section="forms" />
           {/* Plain `<a className="btn-primary">`, not a `<button>` nested inside an `<a>` (invalid
               HTML, undefined activation behaviour) — same `a.btn-*` mechanism `Dashboard.tsx`'s
               "View site ↗" already uses. */}

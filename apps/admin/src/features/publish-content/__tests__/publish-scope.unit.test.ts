@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PUBLISH_SECTION_LABEL_KEYS, publishScopeDescriptionKey, publishScopeTitleKey } from "../publish-scope";
+import { publishScopeDescriptionKey, publishScopeTitleKey } from "../publish-scope";
 
 /**
  * @file `plan-publish-sections-2026-09-25.md` §2 S2 — the pure label rules the dialog title, the
@@ -35,16 +35,19 @@ describe("publishScopeTitleKey", () => {
   });
 });
 
-describe("PUBLISH_SECTION_LABEL_KEYS", () => {
-  it("names all six publishable entity types, matching the registry contributors", () => {
-    expect(PUBLISH_SECTION_LABEL_KEYS).toEqual({
-      page: "Publish pages",
-      post: "Publish posts",
-      media: "Publish media",
-      menu: "Publish menus",
-      redirect: "Publish redirects",
-      "theme-files": "Publish themes",
-    });
+describe("multi-type sections (plan G1)", () => {
+  it("a scope equal to one section's whole type set, in any order, reads as that section", () => {
+    expect(publishScopeTitleKey({ entityTypes: ["form"] })).toBe("Publish forms");
+    expect(publishScopeTitleKey({ entityTypes: ["content-type", "collection-entry"] })).toBe("Publish collections");
+    expect(publishScopeTitleKey({ entityTypes: ["term", "taxonomy"] })).toBe("Publish categories & tags");
+    expect(publishScopeTitleKey({ entityTypes: ["widget", "widget-area"] })).toBe("Publish widgets");
+    expect(publishScopeDescriptionKey({ entityTypes: ["widget", "widget-area"] })).toBe(
+      "Sends your widgets and widget regions to the live site.",
+    );
+  });
+
+  it("part of a section's type set is not that section", () => {
+    expect(publishScopeTitleKey({ entityTypes: ["taxonomy"] })).toBe("Publish all content");
   });
 });
 
