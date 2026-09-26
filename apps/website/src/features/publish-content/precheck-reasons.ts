@@ -8,8 +8,8 @@
  * `ui/report-rows.ts`'s `REASON_REWRITES` regexes verbatim once that handler migrates onto the
  * factory — see each builder's own doc for the exact existing sentence it mirrors. Each builder has a
  * planned user: `malformedKey` (M-RED, redirect's existing sentence), `tombstonedAtDestination`
- * (H-CT, content-type), `missingDependency` (H-EN, collection-entry). G2 adds the `ui/report-rows.ts`
- * rewrites for the last two.
+ * (H-CT, content-type), `missingDependency` (H-EN, collection-entry). `ui/report-rows.ts` rewrites
+ * every builder here for the owner.
  *
  * Zero imports — mirrors `apply-errors.ts`'s own zero-import property (that file's header explains
  * why: it lets both `repo-handler.ts` and any type-specific `publish-content.ts` value-import this
@@ -60,7 +60,7 @@ export function changedSincePlan(entityType: string, id: string, detail: string)
 
 /** A type-specific `validate()` refusal: `id` references `depType:depId`, which this destination is
  *  missing and which is not itself part of the same bundle. New wording — no existing handler has a
- *  `dependsOn` this specific yet; G2 adds a `ui/report-rows.ts` rewrite once a real type uses it.
+ *  `dependsOn` this specific yet; `ui/report-rows.ts` rewrites it.
  *  @complexity O(1). */
 export function missingDependency(entityType: string, id: string, depType: string, depId: string): string {
   return `${entityType} '${id}' depends on ${depType} '${depId}', which is missing at this destination`;
@@ -76,7 +76,7 @@ export function malformedKey(entityType: string, id: string, expectedShape: stri
 
 /** The destination's row for this id is a permanent tombstone rather than an ordinary Trash entry —
  *  distinct from {@link trashedAtDestination} because it can never be restored, so publishing over it
- *  is refused outright. New wording; G2 adds a rewrite once a real type uses it.
+ *  is refused outright. New wording, rewritten by `ui/report-rows.ts`.
  *  @complexity O(1). */
 export function tombstonedAtDestination(entityType: string, id: string): string {
   return `${entityType} '${id}' is permanently removed at this destination and cannot be republished over`;

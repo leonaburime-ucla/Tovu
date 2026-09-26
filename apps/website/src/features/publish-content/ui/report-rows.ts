@@ -128,7 +128,8 @@ interface ReasonRewrite {
 
 /**
  * The closed set of reason strings `planner.ts` and its registered handlers (`post`, `media`,
- * `redirects`, `navigation`, `theme`) can currently produce for a `skipped` or `forced` row, each
+ * `redirects`, `navigation`, `theme`, and the `repo-handler.ts` factory types) can currently produce
+ * for a `skipped`, `forced` or `blocked` row, each
  * paired with the plain sentence a non-technical owner should read instead. Every raw string here is
  * quoted verbatim (minus the interpolated id/type) from where it is thrown, so this list is the
  * traceable map from "what the code says" to "what the dialog shows" — updating a handler's wording
@@ -173,6 +174,124 @@ const REASON_REWRITES: readonly ReasonRewrite[] = [
     pattern: /^(?:[\w-]+ )?'.+' is in the trash at this destination/,
     friendly: "This item is in the trash on the live site. Restore it there before publishing.",
   },
+  // Collections, entries, forms, taxonomies, terms, widgets (repo-handler.ts's factory types): the
+  // `precheck-reasons.ts` builders, then each type's domain refusals that `errors.blocked` passes
+  // through verbatim — quoted from `@jini-ai/cms` (content-types, entries, taxonomy) and
+  // `features/{forms,widgets}` write paths.
+  {
+    // `tombstonedAtDestination("content-type", …)` — for a collection row AND for an entry whose
+    // collection it is (`entries/publish-content.ts`'s validate), so the sentence fits both.
+    pattern: /^(?:content-type '.+' is permanently removed at this destination|content type '.+' (?:is tombstoned|was permanently deleted)|ENTITY_TOMBSTONED: content type )/,
+    friendly: "The collection was permanently deleted on the live site, so this can't be published.",
+  },
+  {
+    pattern: /(?:is permanently removed at this destination|^ENTITY_TOMBSTONED: )/,
+    friendly: "This item was permanently deleted on the live site, so it can't be published again.",
+  },
+  {
+    pattern: /^ENTITY_IN_TRASH: /,
+    friendly: "This item is in the trash on the live site. Restore it there before publishing.",
+  },
+  {
+    pattern: /^[\w-]+ '.+' depends on [\w-]+ '.+', which is missing at this destination/,
+    friendly: "This item uses something that isn't on the live site yet. Publish that too.",
+  },
+  {
+    pattern: /^[\w-]+ '.+' changed on the destination during apply: /,
+    friendly: "This item changed on the live site while publishing. Try again.",
+  },
+  {
+    // Every authorize() refusal: entries/content types (`cannot …`), taxonomy (`is not authorized
+    // for …`), widgets (`lacks permission …`).
+    pattern: /^principal '.+' (?:cannot |is not authorized for |lacks permission )/,
+    friendly: "The live site doesn't allow publishing this kind of content yet.",
+  },
+  {
+    pattern: /^content type '.+' was not found in workspace/,
+    friendly: "This entry's collection isn't on the live site yet. Publish the collection too.",
+  },
+  {
+    pattern: /^content type '.+' is not active/,
+    friendly: "This entry's collection is retired on the live site, so new entries can't be added to it.",
+  },
+  {
+    pattern: /^content type '.+' already exists/,
+    friendly: "This collection was just added on the live site. Try again.",
+  },
+  {
+    pattern: /^fieldsJson failed schema validation: /,
+    friendly: "This entry's fields don't match its collection on the live site. Publish the collection too.",
+  },
+  {
+    pattern:
+      /^(?:content-type key '.+' fails the identifier grammar gate|key '.+' is permanently reserved|field name '.+' (?:fails the identifier grammar gate|appears more than once)|field '.+' has (?:kind '.+', not one of the closed field-kind enum|storage-only kind '.+' and cannot be queryable)|content type '.+' (?:submits more than \d+ queryable fields|update submitted an empty fields array))/,
+    friendly: "The live site can't accept this collection's fields. Update the live site, then try again.",
+  },
+  {
+    // entries (`repo.sqlite.ts`, `trash-aware-memory-repo.ts`) and forms word a trashed slug holder alike.
+    pattern: /^an? [\w-]+ with slug '.+' is in the Trash/,
+    friendly: "An item in the live site's trash still uses this name. Restore or permanently delete it there first.",
+  },
+  {
+    pattern: /^an? [\w-]+ with slug '.+' already exists/,
+    friendly: "Another item on the live site already uses this name.",
+  },
+  {
+    pattern: /^patch omits existing field id\(s\): /,
+    friendly: "A field was removed from this form. The live site never removes form fields, so it can't be published over.",
+  },
+  {
+    pattern: /^'.+' is not a valid email address$/,
+    friendly: "A notification email on this form isn't a valid address.",
+  },
+  {
+    pattern: /^slug '.+' is reserved$/,
+    friendly: "This name is reserved on the live site. Rename it here first.",
+  },
+  {
+    pattern: /^(?:notify\.\w+ must |name must be \d+-\d+ characters|slug must match |one or more field descriptors are invalid)/,
+    friendly: "This form's settings aren't valid on the live site.",
+  },
+  {
+    pattern: /^(?:widget '.+': widget type '.+' is not installed on the destination|widget type '.+' is not registered)/,
+    friendly: "The live site doesn't have this kind of widget yet. Update the live site, then try again.",
+  },
+  {
+    pattern: /^(?:widget '.+': its settings do not fit the destination's|config for widget type '.+' failed schema validation)/,
+    friendly: "This widget's settings don't fit the live site's version of it. Update the live site, then try again.",
+  },
+  {
+    pattern: /references widget '.+', which does not exist in workspace/,
+    friendly: "This region uses a widget that isn't on the live site yet. Publish that widget too.",
+  },
+  {
+    pattern: /references widget '.+', which is trashed/,
+    friendly: "This region uses a widget that's in the trash on the live site. Restore it there first.",
+  },
+  {
+    pattern: /^(?:widget instance '.+' was not found|widget_area '.+' was not found|region '.+' is not bound)/,
+    friendly: "This item changed on the live site while publishing. Try again.",
+  },
+  {
+    pattern: /^taxonomy '.+' is not hierarchical/,
+    friendly: "This term has a parent, but its taxonomy on the live site doesn't allow nesting.",
+  },
+  {
+    pattern: /^taxonomy '.+' was not found/,
+    friendly: "This term's taxonomy isn't on the live site yet. Publish the taxonomy too.",
+  },
+  {
+    pattern: /^parent term '.+' was not found/,
+    friendly: "This term's parent isn't on the live site yet. Publish the parent too.",
+  },
+  {
+    pattern: /^parent term '.+' belongs to taxonomy '.+', not /,
+    friendly: "This term's parent belongs to a different taxonomy on the live site.",
+  },
+  {
+    pattern: /would create a hierarchy cycle$/,
+    friendly: "This term's parent would put it inside itself on the live site.",
+  },
   {
     pattern: /^'.+' is a '.+' at this destination but a '.+' at the source/,
     friendly: "This item's type doesn't match the live site's version, so it can't be published over it.",
@@ -182,7 +301,8 @@ const REASON_REWRITES: readonly ReasonRewrite[] = [
     friendly: "This item has no name set, so it can't be checked against the live site.",
   },
   {
-    pattern: /cannot be prechecked — no \w+ wired for this deps bag/,
+    // `\w+` (media/navigation's port name) and the factory's `notWired` (`<type> ports`).
+    pattern: /cannot be prechecked — no .+ wired for this deps bag/,
     friendly: "Publishing isn't available for this item right now.",
   },
   {

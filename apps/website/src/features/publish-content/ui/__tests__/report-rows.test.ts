@@ -12,7 +12,15 @@ import test from "node:test";
 
 import type { PublishContentOutcomeRow, PublishContentReport } from "../contract.js";
 import { entityKey } from "../../planner.js";
-import { addressHeldByOther, addressHeldInTrash, trashedAtDestination } from "../../precheck-reasons.js";
+import {
+  addressHeldByOther,
+  addressHeldInTrash,
+  changedSincePlan,
+  missingDependency,
+  notWired,
+  tombstonedAtDestination,
+  trashedAtDestination,
+} from "../../precheck-reasons.js";
 import {
   countSelectedPublishing,
   friendlyPublishReason,
@@ -366,6 +374,66 @@ test("friendlyPublishReason rewrites the factory types' trash and address reason
     [addressHeldInTrash("widget", "slug", "about", "w-9"), trash],
     [addressHeldByOther("collection-entry", "slug", "soup", "e-2"), held],
     [addressHeldByOther("taxonomy", "name", "Category", "tx-2"), held],
+  ];
+
+  for (const [raw, friendly] of cases) {
+    assert.equal(friendlyPublishReason(raw), friendly, raw);
+  }
+});
+
+// The rest of the builders, and the new types' domain refusals `errors.blocked` passes through
+// verbatim — each raw string quoted from its throw site (`@jini-ai/cms` content-types/entries/
+// taxonomy, `features/forms`, `features/widgets`).
+test("friendlyPublishReason rewrites the new types' builder reasons and domain refusals", () => {
+  const collectionGone = "The collection was permanently deleted on the live site, so this can't be published.";
+  const changed = "This item changed on the live site while publishing. Try again.";
+  const forbidden = "The live site doesn't allow publishing this kind of content yet.";
+  const badSchema = "The live site can't accept this collection's fields. Update the live site, then try again.";
+  const formSettings = "This form's settings aren't valid on the live site.";
+  const trashedName = "An item in the live site's trash still uses this name. Restore or permanently delete it there first.";
+  const cases: ReadonlyArray<[string, string]> = [
+    [notWired("collection-entry", "e-1", "collection-entry ports"), "Publishing isn't available for this item right now."],
+    [tombstonedAtDestination("content-type", "recipe"), collectionGone],
+    [tombstonedAtDestination("widget", "w-1"), "This item was permanently deleted on the live site, so it can't be published again."],
+    [missingDependency("collection-entry", "e-1", "content-type", "recipe"), "This item uses something that isn't on the live site yet. Publish that too."],
+    [changedSincePlan("term", "t-1", "version 3 expected, found 4"), changed],
+    [addressHeldByOther("content-type", "key", "recipe", "recipe-2"), "Another item on the live site already uses this name."],
+    // content types / entries
+    ["principal 'u-1' cannot import entry 'e-1' (missing permission)", forbidden],
+    ["principal 'u-1' is not authorized for 'admin.taxonomy.manage' (denied)", forbidden],
+    ["principal 'u-1' lacks permission 'widgets.place' (denied)", forbidden],
+    ["content type 'recipe' was not found in workspace 'ws-1'", "This entry's collection isn't on the live site yet. Publish the collection too."],
+    ["content type 'recipe' is not active; new entries cannot be created (REQ-10)", "This entry's collection is retired on the live site, so new entries can't be added to it."],
+    ["content type 'recipe' is tombstoned; entries cannot be imported into it", collectionGone],
+    ["content type 'recipe' was permanently deleted; its key can't be reused (INV-06)", collectionGone],
+    ["ENTITY_TOMBSTONED: content type 'recipe' was permanently deleted and can't be changed.", collectionGone],
+    ["ENTITY_IN_TRASH: term 't-1' is in the Trash. Restore it from the Trash before changing it.", "This item is in the trash on the live site. Restore it there before publishing."],
+    ["content type 'recipe' already exists; use collections_content_type_update_fields to change its fields", "This collection was just added on the live site. Try again."],
+    ["fieldsJson failed schema validation: servings: must be a number", "This entry's fields don't match its collection on the live site. Publish the collection too."],
+    ["field name 'Bad Name' fails the identifier grammar gate", badSchema],
+    ["field 'x' has kind 'geo', not one of the closed field-kind enum", badSchema],
+    ["key 'posts' is permanently reserved for the legacy 'posts' table", badSchema],
+    ["an entry with slug 'soup' is in the Trash — restore it, or delete it permanently from the Trash, to reuse the slug", trashedName],
+    ["an entry with slug 'soup' already exists for type 'recipe' in workspace 'ws-1'", "Another item on the live site already uses this name."],
+    // forms
+    ["a form with slug 'contact' is in the Trash — restore it, or delete it permanently from the Trash, to reuse the slug", trashedName],
+    ["patch omits existing field id(s): f-1, f-2 (behavior.spec.md §1.2)", "A field was removed from this form. The live site never removes form fields, so it can't be published over."],
+    ["'bob@' is not a valid email address", "A notification email on this form isn't a valid address."],
+    ["slug 'admin' is reserved", "This name is reserved on the live site. Rename it here first."],
+    ["name must be 1-120 characters", formSettings],
+    ["one or more field descriptors are invalid", formSettings],
+    // widgets
+    ["widget 'w-1': widget type 'map' is not installed on the destination", "The live site doesn't have this kind of widget yet. Update the live site, then try again."],
+    ["widget 'w-1': its settings do not fit the destination's 'map' widget", "This widget's settings don't fit the live site's version of it. Update the live site, then try again."],
+    ["placement references widget 'w-1', which does not exist in workspace 'ws-1' (REQ-16)", "This region uses a widget that isn't on the live site yet. Publish that widget too."],
+    ["placement references widget 'w-1', which is trashed (REQ-16)", "This region uses a widget that's in the trash on the live site. Restore it there first."],
+    ["widget_area 'a-1' was not found", changed],
+    // taxonomy / terms
+    ["taxonomy 'tags' is not hierarchical; parentId must be null", "This term has a parent, but its taxonomy on the live site doesn't allow nesting."],
+    ["taxonomy 'tags' was not found", "This term's taxonomy isn't on the live site yet. Publish the taxonomy too."],
+    ["parent term 't-0' was not found", "This term's parent isn't on the live site yet. Publish the parent too."],
+    ["parent term 't-0' belongs to taxonomy 'tags', not 'categories'", "This term's parent belongs to a different taxonomy on the live site."],
+    ["assigning 't-0' as parent would create a hierarchy cycle", "This term's parent would put it inside itself on the live site."],
   ];
 
   for (const [raw, friendly] of cases) {

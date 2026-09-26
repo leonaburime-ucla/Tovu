@@ -217,8 +217,9 @@ export function entityKey(entityType: string, entityId: string): string {
  *  because every type that has one guarantees it unique per workspace and derives it from the
  *  operator's own words (`post.slug` is `NOT NULL`; `MediaRecord.slug` is derived from `title` at
  *  upload and unique per `(workspaceId, slug)`), so it is the one value that is both readable AND
- *  addresses exactly one row. `title`/`name`/`filename` follow for a type that has no slug yet. */
-const HUMAN_IDENTIFIER_FIELDS = ["slug", "title", "name", "filename"] as const;
+ *  addresses exactly one row. `title`/`name`/`filename` follow for a type that has no slug yet;
+ *  `label` names a content type (its id is the machine `key`), `regionKey` a widget area. */
+const HUMAN_IDENTIFIER_FIELDS = ["slug", "title", "name", "filename", "label", "regionKey"] as const;
 
 /**
  * What to call one packed entity on screen, or `null` when its state carries nothing readable.
@@ -231,10 +232,10 @@ const HUMAN_IDENTIFIER_FIELDS = ["slug", "title", "name", "filename"] as const;
  *
  * Reads well-known field names off `state` rather than asking the handler, because `PackedEntity.
  * state` is a `Record<string, unknown>` by contract and every registered type already names its
- * human key one of the four below. A type whose key is none of them gets `null` and its caller
+ * human key one of the fields below. A type whose key is none of them gets `null` and its caller
  * shows a short id — degraded, never wrong.
  *
- * @complexity O(1) — at most four property reads, no allocation on the miss path.
+ * @complexity O(1) — at most six property reads, no allocation on the miss path.
  */
 export function entityDisplayLabel(state: Record<string, unknown>): string | null {
   for (const field of HUMAN_IDENTIFIER_FIELDS) {

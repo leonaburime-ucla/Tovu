@@ -1042,6 +1042,12 @@ test("entityDisplayLabel prefers the slug, then the title, then name/filename", 
   assert.equal(entityDisplayLabel({ filename: "f.png" }), "f.png");
 });
 
+test("entityDisplayLabel names a content type by its label and a widget area by its region", () => {
+  assert.equal(entityDisplayLabel({ key: "recipe", label: "Recipes", fields: [] }), "Recipes");
+  assert.equal(entityDisplayLabel({ regionKey: "sidebar-primary", placements: [] }), "sidebar-primary");
+  assert.equal(entityDisplayLabel({ name: "Category", label: "Categories" }), "Category", "name still outranks label");
+});
+
 test("entityDisplayLabel returns null rather than an unusable label", () => {
   assert.equal(entityDisplayLabel({}), null, "no candidate field at all");
   assert.equal(entityDisplayLabel({ slug: "" }), null, "an empty slug is not a label");
