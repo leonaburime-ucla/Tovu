@@ -171,8 +171,8 @@ test("buildRouteManifest: always includes the convention routes robots.txt/sitem
 
 test("buildRouteManifest: resolves and returns the active theme's id + on-disk dir", async () => {
   const manifest = await buildRouteManifest(baseDeps());
-  assert.equal(manifest.activeTheme?.id, "basic");
-  assert.ok(manifest.activeTheme?.dir.endsWith(`${path.sep}basic`));
+  assert.equal(manifest.activeTheme?.id, "tovu-theme");
+  assert.ok(manifest.activeTheme?.dir.endsWith(`${path.sep}tovu-theme`));
 });
 
 test("buildRouteManifest: enumerates the active theme's own static pages, excluding index/404 and template shells", async () => {
@@ -184,7 +184,7 @@ test("buildRouteManifest: enumerates the active theme's own static pages, exclud
   // index/404/template-shell exclusion this test targets can still be proven against the theme's
   // real page content.
   const publishedBasicThemes = createRouteDeps().themes.map((t) =>
-    t.manifest.id === "basic" ? withPublishedPages(t, ["pricing"]) : t
+    t.manifest.id === "tovu-theme" ? withPublishedPages(t, ["pricing"]) : t
   );
   const manifest = await buildRouteManifest(baseDeps({ themes: publishedBasicThemes }));
 
@@ -261,7 +261,7 @@ test("buildRouteManifest: a post explicitly kept at false still loses to the the
   // 2026-08-30 owner correction) — published here, for this test only, so the theme page actually
   // contends for the slug; otherwise `buildThemePageRoutes` skips it before `overridesThemePage` is
   // ever consulted, and the post would win vacuously rather than by the tri-state rule this test targets.
-  const publishedBasicThemes = base.themes.map((t) => (t.manifest.id === "basic" ? withPublishedPages(t, ["pricing"]) : t));
+  const publishedBasicThemes = base.themes.map((t) => (t.manifest.id === "tovu-theme" ? withPublishedPages(t, ["pricing"]) : t));
   const explicitlyKeptPost = {
     id: "post-explicit-false-test",
     workspaceId: base.workspaceId,

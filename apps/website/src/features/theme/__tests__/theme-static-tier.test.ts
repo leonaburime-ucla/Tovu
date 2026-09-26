@@ -40,8 +40,8 @@ function makeStaticThemeDir(
 
 test("the real static/basic theme loads valid with its pages, partials, light tokens and css", () => {
   const theme = loadTheme({
-    themeDir: path.join(STATIC_THEMES_DIR, "basic"),
-    id: "basic",
+    themeDir: path.join(STATIC_THEMES_DIR, "tovu-theme"),
+    id: "tovu-theme",
     source: "built-in",
   });
 

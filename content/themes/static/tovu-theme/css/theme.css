@@ -1,0 +1,731 @@
+/* Tokens are NOT defined here — they live in tokens.json / tokens.light.json and are
+   emitted into :root by the host at render time (or by build-preview.mjs for local
+   preview), matching every other Tovu theme's convention. This file is mode-agnostic
+   on purpose: it reads var(--x) only, so the same stylesheet serves both modes. */
+
+/* Self-hosted Geist — deliberately vendored, never fetched from a CDN, the same rationale
+   NOTICE.md already records for the kUInetic bundle. This site's published Privacy Policy
+   states plainly that no third-party resource loads and no visitor data reaches any CDN; a
+   `fonts.googleapis.com` stylesheet link here would falsify that document, so the faces are
+   declared against files this theme ships itself (`assets/fonts/`, SIL OFL 1.1, licence text
+   vendored beside them — see NOTICE.md, "Self-hosted Geist").
+
+   Until this block existed, `tokens.json` named 'Geist'/'Geist Mono' as the display, body and
+   mono faces and nothing ever fetched them: the manifest's `fonts` array is read only by
+   `fontLink()` inside `pageShell()`, the declarative document shell, which a static-tier theme
+   never reaches because it ships its own head. Every page silently rendered in the fallback
+   stack.
+
+   These url()s are RELATIVE on purpose. This stylesheet is served at
+   `/theme-assets/tovu-theme/css/theme.css`, so `../assets/fonts/` resolves to
+   `/theme-assets/tovu-theme/assets/fonts/` with no path rewriting anywhere — the same
+   self-resolving arrangement `apps/site-chat/public/remixicon.css` uses for its own woff2.
+   Relative is also the only form that survives a base-path static export:
+   `platform/export/site-exporter.ts` follows one hop into a fetched stylesheet's own url()
+   references, so these files ARE discovered and exported, but it deliberately does not rewrite
+   them, so an absolute `/theme-assets/...` url would 404 under any non-root base path.
+
+   One VARIABLE file per family (wght 100-900) rather than the static 400/500 instances the
+   manifest used to name: the rules below use 400, 500 and 600, and static 400/500 files would
+   have left every 600 rule synthesising a faux bold. `font-display: swap` keeps first paint on
+   the fallback stack the tokens already declare instead of blocking on the font. */
+@font-face {
+  font-family: 'Geist';
+  src: url('../assets/fonts/geist-var.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('../assets/fonts/geist-mono-var.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+/* `video`/`iframe` are constrained on the same terms as `img`, not as an afterthought: all three
+   are REPLACED elements, so they size from their own intrinsic dimensions and ignore the width of
+   whatever box an author put them in. A media embed resolves to a bare `<video>` tag
+   (`widgets/html-embeds.ts`'s SELF_RENDERING_MEDIA_TAGS), so an author writing the documented
+   `<div style="max-width:600px" data-embed-config='{"type":"media",…}'>` wrapper got a correctly
+   capped 600px div containing a video that rendered at full source resolution and overflowed both
+   the wrapper and the page — horizontal scroll on every viewport. `height: auto` is what keeps the
+   aspect ratio while the width is being clamped. */
+img, video, iframe { max-width: 100%; }
+img, video { display: block; }
+img, video, iframe { height: auto; }
+a { color: inherit; text-decoration: none; }
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; margin: 0; letter-spacing: -0.02em; }
+p { margin: 0; color: var(--muted); }
+
+.wrap { max-width: var(--container); margin: 0 auto; padding: 0 24px; }
+
+/* ---------- header / nav ---------- */
+/* Single source for the sticky header's rendered height: `.nav-row` below reads `--header-h`
+   directly (its 69px content height; `.site-header`'s own 1px border-bottom brings the real box
+   to 70px). Declared at `:root` rather than scoped to `.site-header` since the header is injected
+   as a partial embed (`blog-sidebar-template.html`'s
+   `data-embed-config='{"type":"partial","id":"nav",...}'`) and ends up a SIBLING of `.docs-layout`
+   under `<body>`, not its ancestor. Header height is the same at every breakpoint (`.nav-row` is
+   never resized in the `@media (max-width: 640px)` block below — the mobile `.main-nav.open` panel
+   is a `position: absolute` overlay under it, not part of its box), so one value covers desktop
+   and mobile alike.
+
+   NOT `--kui-pin-offset`: kUInetic's docs (https://kuinetic.com/docs/catalog.md) say a pinning
+   effect's `offset-top:` defaults to `var(--kui-pin-offset, 0px)`, which reads as "answer the
+   header offset once via that token." That default genuinely exists in the vendored bundle
+   (`stickyParams`, `kuinetic.all.js`) — but only for the sticky/pin effects (`pin-section`/
+   `pin-until`/`pin-spacer`/`stacking-cards`), none of which this theme uses anywhere. The
+   scroll-spy effect this theme DOES use (`data-kui="scroll-spy ..."` on `.docs-layout`,
+   `blog-sidebar-template.html`) is a different code path (`prepareScrollSpyContainer`) whose own
+   `offset-top` param defaults to a literal `"0px"` and is parsed by a plain JS regex
+   (`toPixels()`/`NUMBER_WITH_UNIT`) that cannot read `var()`/`calc()` at all — a CSS custom
+   property can never reach it. That effect's `offset-top:70px` is therefore authored directly on
+   the `data-kui` attribute instead (see the comment there). If this theme ever adds a real pin/
+   sticky effect, reintroduce `--kui-pin-offset: calc(var(--header-h) + 1px)` here for it to pick
+   up automatically; until then it would be a var nothing reads. */
+:root {
+  --header-h: 69px;
+}
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in oklch, var(--bg) 82%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+.site-header.scrolled { border-bottom-color: var(--border); }
+.nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-h);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+/* The mark PNG itself (`assets/logo.png` / `logo@2x.png`) is the owner's gold artwork only,
+   cropped tight with a transparent background -- no tile or backdrop baked in. Previously this
+   painted a `--surface`/`--border` tile behind it so the mark had a mode-aware backing; the owner
+   looked at light mode and asked for the tile removed (2026-08-31) -- the transparent PNG sits
+   directly on the page background instead, which still satisfies "light in light mode, dark in
+   dark mode" because the page background itself is mode-aware. Sizing only now, no
+   background/border, and no border-radius either: with nothing left to paint, there is no longer a
+   square-edged box for a radius to round, and the PNG's own artwork has no square edge to clip. */
+.brand .mark {
+  width: 28px; height: 28px;
+  display: grid;
+  place-items: center;
+}
+.brand .mark img { width: 100%; height: 100%; border-radius: 7px; display: block; }
+.main-nav { display: flex; align-items: center; gap: 28px; }
+.main-nav a {
+  font-size: 14px;
+  color: var(--muted);
+  transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.main-nav a:hover, .main-nav a[aria-current="page"] { color: var(--fg); }
+.nav-actions { display: flex; align-items: center; gap: 8px; }
+/* `.nav-actions` prefix is load-bearing: this button also carries `.btn`, whose
+   `display: inline-flex` (below) has IDENTICAL specificity and comes LATER, so a bare
+   `.nav-toggle` selector loses on source order and the hamburger shows at every width.
+   Same collision class as `.wrap`/`.post-detail`. Fixed 2026-08-30. */
+.nav-actions .nav-toggle { display: none; }
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  margin-right: 4px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.theme-toggle:hover { background: rgba(127,127,127,0.12); }
+.theme-toggle .icon-stack { position: relative; width: 16px; height: 16px; }
+.theme-toggle svg {
+  position: absolute; inset: 0; width: 16px; height: 16px;
+  transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.theme-toggle .icon-sun { opacity: 0; transform: rotate(-90deg) scale(0.6); }
+.theme-toggle .icon-moon { opacity: 1; transform: rotate(0deg) scale(1); }
+:root[data-theme="light"] .theme-toggle .icon-sun { opacity: 1; transform: rotate(0deg) scale(1); }
+:root[data-theme="light"] .theme-toggle .icon-moon { opacity: 0; transform: rotate(90deg) scale(0.6); }
+
+/* ---------- scroll reveal ----------
+   Deliberately NO default `opacity: 0` here — and none arrives from anywhere else
+   either. Reveals are declared per element as `data-kui="fade-up ..."` and driven by
+   the vendored `scripts/vendor/kuinetic.all.js` (MIT, see
+   `scripts/vendor/kuinetic-LICENSE.md`), which injects its entire stylesheet itself at
+   load. So if that script is blocked or fails, no kUInetic CSS exists at all and every
+   element renders in its normal, fully visible resting state: the hidden state lives
+   only inside an `@keyframes ... from { opacity: 0 }` block, and with no kUInetic loaded
+   there is no animation to render that frame.
+
+   That guarantee covers the script-ABSENT case only. The earlier wording here went on to
+   claim the `from` block is "never a resting style" at all, which is wrong and is
+   corrected 2026-09-04: an `on:enter` element is compiled with `animation-fill-mode: both`
+   plus `animation-play-state: paused`, and a paused fill-both animation renders its `from`
+   frame — so between load and the observer firing the element really does rest at
+   `opacity: 0`. Harmless when the observer can fire; fatal when it cannot. `threshold` is
+   a fraction of the observed element's OWN area, so anything taller than
+   `viewport / threshold` never satisfies it and stays invisible for the life of the page.
+   Hence the rule the templates in `render/pages/` now follow: no `threshold:` token on any
+   element whose height the template does not bound. See NOTICE.md, "Why the page wrappers
+   carry no threshold:".
+
+   kUInetic's one rule that hides content in CSS alone —
+   `html[data-kui-cloak] [data-kui][data-kui-reveal]:not([data-kui-state])` — is opt-in
+   behind a `data-kui-cloak` attribute on `<html>` that this theme deliberately never
+   sets (the library only ever removes that attribute, never adds it). Progressive
+   enhancement, not a CSS/JS handshake that can desync. */
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle svg { transition: none; }
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 18px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.btn-ghost { border-color: var(--border-strong); color: var(--fg); background: transparent; }
+.btn-ghost:hover { background: rgba(255,255,255,0.06); }
+.btn-solid { background: var(--fg); color: var(--bg); }
+.btn-solid:hover { opacity: 0.88; }
+.btn-lg { height: 44px; padding: 0 24px; border-radius: 22px; font-size: 15px; }
+.btn-block { width: 100%; }
+
+/* ---------- status pill (the one accent color) ---------- */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 12px/1 var(--font-mono);
+  letter-spacing: 0.02em;
+  color: var(--accent-text);
+  background: color-mix(in oklch, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--accent) 30%, transparent);
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+.status-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+/* ---------- logo carousel ---------- */
+.logo-carousel {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.logo-track {
+  display: flex;
+  align-items: center;
+  gap: 56px;
+  width: max-content;
+  animation: logo-scroll 26s linear infinite;
+}
+.logo-carousel:hover .logo-track { animation-play-state: paused; }
+.logo-track .logo-ph { font: 13px/1 var(--font-mono); color: var(--muted); letter-spacing: 0.03em; white-space: nowrap; opacity: 0.7; }
+@keyframes logo-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-track { animation: none; }
+}
+
+/* ---------- hero ---------- */
+.hero { padding-block: 96px 72px; text-align: center; }
+.hero .eyebrow-row { display: flex; justify-content: center; margin-bottom: 28px; }
+.hero h1 {
+  font-size: clamp(40px, 6vw, 72px);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  max-width: 15ch;
+  margin: 0 auto 24px;
+}
+.hero-line { display: block; }
+.hero .lede { font-size: 18px; max-width: 46ch; margin: 0 auto 36px; }
+.hero .cta-row { display: flex; gap: 12px; justify-content: center; }
+
+.hero-frame {
+  margin-top: 64px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  aspect-ratio: 16/8;
+  overflow: hidden;
+  position: relative;
+}
+.ph-img {
+  width: 100%; height: 100%;
+  background:
+    linear-gradient(135deg, var(--surface-2) 25%, transparent 25%) 0 0/16px 16px,
+    linear-gradient(225deg, var(--surface-2) 25%, transparent 25%) 0 0/16px 16px,
+    var(--surface);
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font: 12px/1 var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- sections ---------- */
+section.band { padding-block: 72px; border-top: 1px solid var(--border); }
+.section-head { max-width: 56ch; margin-bottom: 48px; }
+.section-head .kicker {
+  display: block; font: 12px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent-text); margin-bottom: 14px;
+}
+.section-head h2 { font-size: clamp(28px, 3.4vw, 38px); letter-spacing: -0.02em; margin-bottom: 12px; }
+.section-head p { font-size: 16px; }
+
+.feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.feature-card { background: var(--bg); padding: 32px; }
+.feature-card .icon { width: 32px; height: 32px; margin-bottom: 20px; color: var(--fg); }
+.feature-card h3 { font-size: 17px; font-weight: 500; margin-bottom: 8px; letter-spacing: -0.01em; }
+.feature-card p { font-size: 14px; }
+
+/* ---------- footer ---------- */
+.site-footer { border-top: 1px solid var(--border); padding: 56px 0 40px; }
+/* repeat(4,1fr) -> repeat(3,1fr): the footer's "Account" column was commented out in footer.html
+   2026-08-31 (owner request, reversible) leaving 4 visible columns (brand + Product + Resources +
+   Legal), not 5. Restore this to repeat(4,1fr) together with uncommenting that column. */
+.footer-grid { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 32px; margin-bottom: 48px; }
+.footer-col h4 { font-size: 13px; color: var(--fg); margin-bottom: 14px; font-family: var(--font-body); font-weight: 500; }
+.footer-col a { display: block; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.footer-col a:hover { color: var(--fg); }
+.footer-bottom { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 24px; }
+
+/* ---------- pricing ---------- */
+.pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.plan-card { border: 1px solid var(--border); border-radius: 16px; padding: 32px; display: flex; flex-direction: column; }
+.plan-card.featured { border-color: var(--border-strong); background: var(--surface); }
+.plan-card h3 { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+.plan-card .price { font-size: 40px; font-family: var(--font-display); letter-spacing: -0.02em; margin: 16px 0 4px; }
+.plan-card .price span { font-size: 14px; color: var(--muted); font-family: var(--font-body); }
+.plan-card .desc { font-size: 13px; margin-bottom: 24px; }
+.plan-card ul { list-style: none; margin: 24px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+.plan-card li { font-size: 13px; color: var(--fg); display: flex; gap: 10px; align-items: flex-start; }
+.plan-card li svg { width: 14px; height: 14px; margin-top: 2px; flex-shrink: 0; color: var(--muted); }
+
+.faq-list { display: flex; flex-direction: column; border-top: 1px solid var(--border); max-width: 720px; margin: 0 auto; }
+.faq-item { border-bottom: 1px solid var(--border); }
+.faq-item summary { padding: 22px 0; font-size: 15px; font-weight: 500; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after { content: '+'; font-size: 20px; color: var(--muted); }
+.faq-item[open] summary::after { content: '\2212'; }
+.faq-item p { padding-bottom: 22px; font-size: 14px; max-width: 60ch; }
+
+/* ---------- docs ---------- */
+/* `padding-block`, not shorthand `padding`: same clobber as `.hero`/`section.band` (fixed
+   2026-08-31) — this rule and `.wrap`'s `padding: 0 24px` share specificity, and this one comes
+   later in the cascade, so a shorthand here would zero out `.wrap`'s inline padding on every
+   `.docs-layout.wrap` element (`docs.html`'s `<main class="wrap docs-layout">`, and
+   `blog-sidebar-template.html`'s `<div class="docs-layout wrap">`), running the sidebar and
+   article flush against the viewport edge. `padding-block` only ever touches top/bottom, so it
+   can't touch `.wrap`'s left/right padding at all. */
+.docs-layout { display: grid; grid-template-columns: 240px 1fr; gap: 48px; padding-block: 48px 96px; }
+.docs-side { border-right: 1px solid var(--border); padding-right: 24px; }
+.docs-side .group { margin-bottom: 28px; }
+.docs-side .group h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 12px; font-family: var(--font-body); font-weight: 500; }
+.docs-side a { display: block; font-size: 13.5px; color: var(--muted); padding: 5px 0; }
+.docs-side a:hover, .docs-side a[aria-current="page"] { color: var(--fg); }
+.docs-main h1 { font-size: 34px; margin-bottom: 14px; }
+.docs-main .lede { font-size: 16px; margin-bottom: 32px; max-width: 60ch; }
+.docs-main pre {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 18px 20px; overflow-x: auto; font: 13px/1.5 var(--font-mono); color: var(--fg);
+  white-space: pre; position: relative;
+}
+.docs-main pre code { white-space: inherit; line-height: inherit; padding: 0; }
+.docs-main h2 { font-size: 20px; margin: 40px 0 14px; }
+.docs-main p { font-size: 15px; margin-bottom: 14px; max-width: 60ch; }
+
+/* ---------- changelog ---------- */
+.changelog-list { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; }
+.changelog-entry { display: grid; grid-template-columns: 140px 1fr; gap: 32px; padding: 40px 0; border-top: 1px solid var(--border); }
+.changelog-entry time { font: 13px/1 var(--font-mono); color: var(--muted); padding-top: 4px; }
+.changelog-entry h3 { font-size: 19px; margin-bottom: 10px; }
+.changelog-entry p { font-size: 14.5px; margin-bottom: 12px; max-width: 56ch; }
+.changelog-entry .tag { display: inline-block; font: 11px/1 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; margin-bottom: 12px; }
+
+/* ---------- blog ---------- */
+.blog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.post-card { border: 1px solid var(--border); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.post-card.featured { grid-column: span 3; flex-direction: row; align-items: stretch; gap: 32px; padding: 28px; }
+.post-card.featured .post-card-media { flex: 0 0 42%; margin-bottom: 0; aspect-ratio: 16/11; }
+.post-card-body { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
+.post-card-media { aspect-ratio: 16/10; margin-bottom: 16px; font-size: 12px; border-radius: 10px; }
+.post-card .tag { display: inline-block; align-self: flex-start; font: 11px/1 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent-text); border: 1px solid color-mix(in oklch, var(--accent) 30%, transparent); background: color-mix(in oklch, var(--accent) 10%, transparent); padding: 4px 8px; border-radius: 6px; margin-bottom: 12px; }
+.post-card h2, .post-card h3 { font-weight: 500; letter-spacing: -0.01em; margin-bottom: 10px; }
+.post-card h2 { font-size: 22px; }
+.post-card h3 { font-size: 17px; }
+.post-card p { font-size: 14px; margin-bottom: 16px; flex: 1; }
+.post-meta { font: 12.5px/1 var(--font-mono); color: var(--muted); display: flex; gap: 8px; margin-top: auto; }
+
+/* ---------- blog post (single-post template) ---------- */
+.post-detail { max-width: 720px; margin: 0 auto; padding-block: 72px 96px; }
+.post-detail-header { margin-bottom: 40px; }
+.post-detail-header h1 { font-size: clamp(30px, 4.4vw, 46px); line-height: 1.08; letter-spacing: -0.02em; margin-bottom: 16px; }
+.post-detail-header .post-meta { font-size: 13px; }
+.post-detail-body { font-size: 17px; line-height: 1.7; max-width: 66ch; }
+.post-detail-body h2 { font-size: 26px; margin: 40px 0 16px; letter-spacing: -0.01em; }
+.post-detail-body h3 { font-size: 20px; margin: 32px 0 12px; letter-spacing: -0.01em; }
+.post-detail-body p { margin-bottom: 18px; }
+.post-detail-body ul, .post-detail-body ol { margin: 0 0 18px 22px; }
+.post-detail-body li { margin-bottom: 6px; }
+.post-detail-body blockquote { border-left: 2px solid var(--border-strong); padding-left: 20px; margin: 24px 0; color: var(--muted); font-style: italic; }
+.post-detail-body code { font: 13px/1 var(--font-mono); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; }
+/* `font` (13px/1.5) set here, on `pre` itself, not just on `pre code` below — `pre` is the block
+   box that lays out the forced-newline lines, and CSS gives every line box a "strut" sized off the
+   BLOCK's own font/line-height, not the inline `code` descendant's. Without an override here `pre`
+   inherited `.post-detail-body`'s 17px/1.7 (line-height: 28.9px), so every line was struck at
+   28.9px tall even though the visible glyphs rendered at `code`'s 13px/19.5px — double-spaced text
+   sitting inside correctly-sized lines. Matches `.docs-main pre` below, which already sets its own
+   font and never had this bug. */
+.post-detail-body pre { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; overflow-x: auto; margin: 20px 0; white-space: pre; position: relative; font: 13px/1.5 var(--font-mono); }
+.post-detail-body pre code { border: none; background: none; padding: 0; white-space: inherit; line-height: 1.5; }
+/* `height: auto` added (2026-08-12, same dispatch as the admin editor's `.editor-body .tiptap
+   img` fix) — confirmed live (headless Chromium against this exact stylesheet, a real PNG
+   carrying `width`/`height` HTML attributes) that WITHOUT it, an image squashes instead of
+   scaling: `max-width: 100%` alone shrinks the rendered width, but the HTML `height` attribute
+   `render.ts` emits (from stored media metadata) still wins as a presentational hint and pins
+   the pixel height, distorting the aspect ratio. `renderImageTag` (`src/server/http/site/
+   render.ts`) emits `width`/`height` independently whenever an asset has that metadata stored —
+   this is a real, reachable shape, not a hypothetical one. This same rule, byte-identical, is
+   copied (not inherited — ADR/decision: Tovu themes are copies, see `project_tovu_theme_copy_
+   model`) into 5 other themes; all 6 got this same one-line fix in this dispatch. */
+.post-detail-body img { max-width: 100%; height: auto; border-radius: 10px; margin: 20px 0; }
+/* Highlight mark (`renderDocNode`'s `"highlight"` case, 2026-08-11) — the browser's own UA default
+   for `<mark>` (yellow background, black text) is legible on its own, but a bare square block reads
+   out of place next to every other inline element here that already carries this theme's own
+   rounding (`code` two lines up, `img` just above). An explicit `background`/`color` here also stops
+   an author-supplied `background-color` inline style (`safeCssColor`, render.ts) from ever landing
+   on illegible black-on-black — the inline style, when present, still wins over this class rule
+   (equal-ish specificity but source order + `style=""` beats a stylesheet class), this is only the
+   fallback for the toolbar's plain, colorless toggle. */
+.post-detail-body mark { background: #fef08a; color: #422006; border-radius: 3px; padding: 0 3px; }
+/* Table (`renderDocNode`'s `"table"`/`"tableRow"`/`"tableCell"`/`"tableHeader"` cases, 2026-08-11) —
+   an unstyled `<table>` has no visible cell boundaries at all, which is what "renders as unstyled
+   garbage publicly" (the brief's own phrase for structural nodes) looks like in practice: `border-
+   collapse` alone leaves every cell edge invisible until a border is declared explicitly. `overflow-
+   x: auto` on the wrapper block handles a table wider than the reading column (66ch, `.post-detail-
+   body`'s own max-width above) without it blowing out the page's horizontal scroll. */
+.post-detail-body table { width: 100%; border-collapse: collapse; margin: 24px 0; display: block; overflow-x: auto; }
+.post-detail-body th, .post-detail-body td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+.post-detail-body th { background: var(--surface); font-weight: 600; }
+/* Task list (`renderDocNode`'s `"taskList"`/`"taskItem"` cases, 2026-08-11) — without this,
+   `ul[data-type="taskList"]` inherits the plain `ul, ol` bullet-indent rule two lines above (a
+   redundant bullet glyph next to the checkbox) and the checkbox/label/content sit on three stacked
+   lines instead of one row, since `<li data-type="taskItem">` has no layout of its own beyond the
+   UA default. `list-style: none` + `padding-left: 0` removes the bullet; the flex row aligns the
+   (disabled, public-render-only — see that case's own comment) checkbox with the first line of text
+   rather than the block's own vertical center. */
+.post-detail-body ul[data-type="taskList"] { list-style: none; padding-left: 0; margin: 0 0 18px; }
+.post-detail-body li[data-type="taskItem"] { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+.post-detail-body li[data-type="taskItem"] > label { display: flex; align-items: center; margin-top: 0.35em; }
+.post-detail-body li[data-type="taskItem"] > div { flex: 1 1 auto; }
+.post-detail-body li[data-type="taskItem"] > div p { margin-bottom: 0; }
+/* YouTube embed (`renderDocNode`'s `"youtube"` case, 2026-08-11) — a responsive 16:9 box regardless
+   of whatever width/height the editor's own node carried (the renderer ignores those attrs
+   entirely, see that case's own comment for why); without this an unstyled `<iframe>` renders at
+   its raw HTML default size (300x150), which is both tiny and non-responsive on a narrow viewport. */
+.post-detail-body .youtube-embed { position: relative; width: 100%; aspect-ratio: 16 / 9; margin: 24px 0; border-radius: 10px; overflow: hidden; }
+.post-detail-body .youtube-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+/* Mention link (`renderDocNode`'s `"mention"` case, toolbar-polish pass 2026-08-11) — a bare `<a>`
+   inherits `color: inherit; text-decoration: none` from this theme's own reset (`a` rule near the
+   top of this file), which would make a mention indistinguishable from the surrounding prose; the
+   whole point of a mention is that it reads as a link. `--accent` matches every other inline-accent
+   use in this theme (status pills, tags, focus rings). Underline is deferred to `:hover` rather than
+   always-on so the link doesn't visually compete with the "@" it already carries as its own signal. */
+.post-detail-body .post-mention { color: var(--accent-text); font-weight: 600; }
+.post-detail-body .post-mention:hover { text-decoration: underline; }
+
+/* ---------- about ---------- */
+.about-hero { padding: 88px 0 56px; }
+.about-hero h1 { font-size: clamp(36px, 5vw, 56px); max-width: 16ch; margin-bottom: 20px; }
+.about-hero p { font-size: 17px; max-width: 52ch; }
+.photo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.photo-grid .ph-img { aspect-ratio: 3/4; border-radius: 8px; font-size: 11px; }
+.values-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+.values-grid .value h3 { font-size: 16px; font-weight: 500; margin-bottom: 8px; }
+.values-grid .value p { font-size: 14px; }
+
+/* ---------- download ---------- */
+.download-hero { padding: 96px 0; text-align: center; }
+.install-cmd {
+  display: inline-flex; align-items: center; gap: 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 20px; font: 14px/1 var(--font-mono); color: var(--fg); margin: 32px 0;
+}
+.install-cmd button { background: transparent; border: 1px solid var(--border-strong); color: var(--muted); border-radius: 6px; padding: 4px 8px; font-size: 11px; cursor: pointer; font-family: var(--font-mono); }
+.install-cmd button:hover { color: var(--fg); }
+.platform-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+
+/* ---------- auth ---------- */
+.auth-wrap { max-width: 380px; margin: 0 auto; padding: 96px 24px 120px; }
+.auth-wrap h1 { font-size: 28px; margin-bottom: 8px; text-align: center; }
+.auth-wrap .lede { text-align: center; font-size: 14px; margin-bottom: 32px; }
+.field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.field label { font-size: 13px; color: var(--fg); font-weight: 500; }
+.field input {
+  height: 42px; border-radius: 10px; border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--fg); padding: 0 14px; font-size: 14px; font-family: var(--font-body);
+}
+.field input:focus { outline: none; border-color: var(--accent-text); }
+.auth-foot { text-align: center; font-size: 13px; color: var(--muted); margin-top: 20px; }
+.auth-foot a { color: var(--fg); border-bottom: 1px solid var(--border-strong); }
+.divider { display: flex; align-items: center; gap: 12px; margin: 24px 0; color: var(--muted); font-size: 12px; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ---------- responsive ---------- */
+@media (max-width: 860px) {
+  .feature-grid { grid-template-columns: 1fr; }
+  .pricing-grid { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .docs-layout { grid-template-columns: 1fr; }
+  .docs-side { border-right: none; border-bottom: 1px solid var(--border); padding-right: 0; padding-bottom: 24px; }
+  .values-grid { grid-template-columns: 1fr; }
+  .photo-grid { grid-template-columns: repeat(2, 1fr); }
+  .changelog-entry { grid-template-columns: 1fr; gap: 8px; }
+  .blog-grid { grid-template-columns: 1fr; }
+  .post-card.featured { grid-column: span 1; flex-direction: column; }
+  .post-card.featured .post-card-media { aspect-ratio: 16/10; }
+}
+@media (max-width: 640px) {
+  .site-header { position: sticky; }
+  .main-nav {
+    display: none;
+    position: absolute;
+    top: 100%; left: 0; right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 4px 24px 12px;
+  }
+  .main-nav.open { display: flex; }
+  .main-nav a {
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+    font-size: 15px;
+  }
+  .nav-actions .nav-toggle { display: inline-flex; }
+}
+
+/* ---------------------------------------------------------------------------
+   Docs layout + sidebar menu (blog-sidebar-template.html)
+
+   The .menu-list / .menu-item / is-current / is-active / has-children / depth-N
+   hooks are emitted by the engine's tree renderer (static-render.ts::renderMenuTree),
+   not authored here, so these rules work for ANY menu bound to a tree-variant
+   marker — that is the whole point of the sidebar being reusable.
+   --------------------------------------------------------------------------- */
+
+.docs-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 48px;
+  align-items: start;
+  padding-top: 48px;
+  padding-bottom: 96px;
+}
+
+.docs-sidebar {
+  position: sticky;
+  top: 88px;
+  max-height: calc(100vh - 112px);
+  overflow-y: auto;
+}
+
+/* The engine emits one <ul class="menu-list depth-0"> per tree; nested levels get depth-1, etc. */
+.docs-nav .menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.docs-nav .menu-list.depth-1 {
+  margin: 4px 0 8px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+
+.docs-nav .menu-item {
+  margin: 0;
+}
+
+.docs-nav .menu-item > a,
+.docs-nav .menu-item > .menu-item-label {
+  display: block;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+  text-decoration: none;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.docs-nav .menu-item > a:hover {
+  color: var(--fg);
+  background: var(--surface-2);
+}
+
+/* A top-level item with children is a section heading, not a destination. */
+.docs-nav .menu-item.depth-0.has-children > a,
+.docs-nav .menu-item.depth-0.has-children > .menu-item-label {
+  margin-top: 18px;
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.docs-nav .menu-item.depth-0:first-child.has-children > a,
+.docs-nav .menu-item.depth-0:first-child.has-children > .menu-item-label {
+  margin-top: 0;
+}
+
+/* is-current = this exact item. is-active = this item or a descendant, which is what keeps the
+   surrounding section visibly open while you read one of its pages. */
+.docs-nav .menu-item.is-current > a,
+.docs-nav .menu-item > a[aria-current="page"] {
+  color: var(--accent-text);
+  background: color-mix(in oklch, var(--accent) 12%, transparent);
+  font-weight: 500;
+}
+
+.docs-nav .menu-item.is-active:not(.is-current) > a {
+  color: var(--fg);
+}
+
+/* kUInetic scroll-spy (2026-08-31, `blog-sidebar-template.html`'s `data-kui="scroll-spy ..."`) sets
+   this attribute itself on both the in-view section and its paired sidebar link(s) — a boolean data
+   attribute, not a class (see this theme's NOTICE.md "Kuinetic vendored" section), so it needs its
+   own rule rather than reusing `.is-current` above, which the retired `docs-sidebar.js` toggled by a
+   different mechanism entirely. Same visual treatment as `.is-current` on purpose: one page reading
+   as "you are here," regardless of which of the two spies produced it. */
+.docs-nav .menu-item > a[data-kui-active="true"] {
+  color: var(--accent-text);
+  background: color-mix(in oklch, var(--accent) 12%, transparent);
+  font-weight: 500;
+}
+
+/* An unavailable branch renders as inert text so its children survive — dim it so it does not read
+   as a link that failed to work. */
+.docs-nav .menu-item > .menu-item-label {
+  color: var(--muted);
+  opacity: 0.7;
+  cursor: default;
+}
+
+.docs-nav .menu-item-desc {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.docs-nav .menu-item-icon {
+  display: inline-block;
+  width: 1em;
+  margin-right: 6px;
+  vertical-align: -0.1em;
+}
+
+.docs-content {
+  min-width: 0;
+}
+
+/* The docs article reuses `.post-detail` for its typography, which also carries
+   `padding: 72px 0 96px` — correct for a full-width article page, wrong here, because
+   `.docs-layout` already supplies the top spacing. The two stacked, so the article started 72px
+   below the sidebar's first item instead of level with it. Only the top is zeroed; the 96px
+   bottom is still wanted.
+
+   `margin: 0` for the same reason: `.post-detail` also carries `margin: 0 auto` to center a
+   full-width article page. On a grid item, auto inline margins opt the item OUT of the grid's
+   default stretch sizing — the browser sizes it to its own content (shrink-to-fit, still capped
+   by `.post-detail`'s `max-width: 720px`) and uses the margins to center whatever's left inside
+   the track, instead of filling it. A wide element inside the article (a `<pre>` code sample,
+   here) has no track width to shrink against once that happens, so `overflow-x: auto` on the
+   `pre` never engages and the article renders at its content's full intrinsic width — well past
+   the sidebar and off the right edge of the viewport on narrow screens. Zeroing the margin here
+   restores plain stretch: the article fills the track (still never wider than 720px), so the
+   reading column lines up flush with the sidebar's edge and a wide `pre` scrolls inside its own
+   box instead of blowing out the page. */
+.docs-layout .docs-content {
+  padding-top: 0;
+  margin: 0;
+}
+
+/* A section heading is a label, not a destination, so it takes the accent colour on its own rather
+   than the filled pill a real current page gets — the pill on an uppercase heading read as a
+   selected row and fought the content for attention. */
+.docs-nav .menu-item.depth-0.has-children.is-current > a,
+.docs-nav .menu-item.depth-0.has-children > a[aria-current="page"] {
+  background: transparent;
+  color: var(--accent-text);
+}
+
+.docs-content h2[id],
+.docs-content h3[id] {
+  scroll-margin-top: 96px;
+}
+
+@media (max-width: 900px) {
+  .docs-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding-top: 32px;
+  }
+
+  .docs-sidebar {
+    position: static;
+    max-height: none;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+}

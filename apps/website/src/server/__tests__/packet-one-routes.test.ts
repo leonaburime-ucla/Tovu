@@ -40,13 +40,13 @@ test("packet-one admin and content routes expose the seeded post loop", async (t
   const themeUpdate = await fetch(`${baseUrl}/api/admin/v1/workspaces/workspace-local/presentation`, {
     method: "PATCH",
     headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify({ activeThemeId: "basic" }),
+    body: JSON.stringify({ activeThemeId: "tovu-theme" }),
   });
   assert.equal(themeUpdate.status, 200);
   const themePayload = (await themeUpdate.json()) as {
     settings: { activeThemeId: string };
   };
-  assert.equal(themePayload.settings.activeThemeId, "basic");
+  assert.equal(themePayload.settings.activeThemeId, "tovu-theme");
 
   const saveResponse = await fetch(`${baseUrl}/api/admin/v1/workspaces/workspace-local/posts/post-home`, {
     method: "PUT",
@@ -78,7 +78,7 @@ test("packet-one admin and content routes expose the seeded post loop", async (t
   assert.equal(contentPayload.post.workspaceId, undefined);
   assert.equal(contentPayload.post.version, undefined);
   assert.equal(contentPayload.post.status, undefined);
-  assert.equal(contentPayload.presentation.activeThemeId, "basic");
+  assert.equal(contentPayload.presentation.activeThemeId, "tovu-theme");
 });
 
 test("POST posts creates a blank draft and it's immediately listed", async (t) => {
@@ -678,7 +678,6 @@ test("GET themes lists discovered built-in themes, TB-01 ordered, exactly one ma
   assert.deepEqual(
     themesPayload.themes.map((t) => t.id),
     [
-      "basic",
       "basic-2",
       "basic-declarative",
       "fashion-modern",
@@ -693,6 +692,7 @@ test("GET themes lists discovered built-in themes, TB-01 ordered, exactly one ma
       "tailark-dusk",
       "tailark-quartz-dark",
       "tailark-quartz-libre",
+      "tovu-theme",
     ]
   );
   assert.ok(themesPayload.themes.every((t) => t.source === "built-in"));
@@ -701,7 +701,7 @@ test("GET themes lists discovered built-in themes, TB-01 ordered, exactly one ma
   // Exactly one theme is active, matching the seeded default (server/seed.ts).
   const activeThemes = themesPayload.themes.filter((t) => t.active);
   assert.equal(activeThemes.length, 1);
-  assert.equal(activeThemes[0].id, "basic");
+  assert.equal(activeThemes[0].id, "tovu-theme");
 });
 
 test("GET themes 404s for an unknown workspace id and 403s without theme.set", async (t) => {

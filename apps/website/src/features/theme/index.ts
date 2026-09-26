@@ -3,6 +3,7 @@ export {
   discoverAllBuiltInThemes,
   loadTheme,
   findTheme,
+  findStoredTheme,
   validThemeIds,
   rescanThemes,
   duplicateThemeIds,
@@ -143,6 +144,7 @@ export {
   type ActiveThemeResolution,
   type ActiveThemeResolutionDeps,
 } from "./active-theme.js";
+export { RENAMED_THEME_IDS, themeIdCandidates } from "./theme-id-aliases.js";
 
 // ADR-020 §3 (C6) Tier-2 guardrail: re-exported so `server/http/site/liquid-worker.ts`
 // can run the same lint defensively at render time that `loadTheme()` runs at publish time.

@@ -277,7 +277,7 @@ test("publishStaticSite: an asset that fails to export blocks publishing, the sa
   // the override, the same gotcha `commit-site.unit.test.ts`'s identical fixture documents. As of
   // 2026-08-20 pass 2, `createSiteApp` ITSELF is also closure-bound (not just `exportSiteBound`) —
   // one more reason this must stay a mutation.
-  deps.createSiteApp = createSiteAppWithFailingAsset("/theme-assets/basic/css/theme.css", deps);
+  deps.createSiteApp = createSiteAppWithFailingAsset("/theme-assets/tovu-theme/css/theme.css", deps);
 
   const result = await publishStaticSite(
     {
@@ -301,7 +301,7 @@ test("publishStaticSite: an asset that fails to export blocks publishing, the sa
   assert.equal(result.code, "EXPORT_FAILED");
   assert.equal(
     result.message,
-    "refused to publish: 1 asset(s) failed to export (first: '/theme-assets/basic/css/theme.css' — GET /theme-assets/basic/css/theme.css -> 500)"
+    "refused to publish: 1 asset(s) failed to export (first: '/theme-assets/tovu-theme/css/theme.css' — GET /theme-assets/tovu-theme/css/theme.css -> 500)"
   );
 });
 

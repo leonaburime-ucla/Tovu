@@ -494,7 +494,7 @@ test("renderSite: siteAssistantEnabled:true injects the stylesheet link, mount n
 });
 
 test("renderSite: siteAssistantEnabled:true injects the widget on a static-tier home page too — regression for the ADR-054 gap where `renderStaticTierHomePage` bypasses `pageShell` (and its siteAssistantMarkup splice) entirely, so the widget silently never appeared for any static theme's home route no matter the setting", async () => {
-  const theme = loadTheme({ themeDir: path.join(process.cwd(), "content", "themes", "static", "basic"), id: "basic", source: "built-in" });
+  const theme = loadTheme({ themeDir: path.join(process.cwd(), "content", "themes", "static", "tovu-theme"), id: "tovu-theme", source: "built-in" });
   assert.equal(theme.status, "valid");
   assert.equal(theme.manifest.tier, "static");
 
@@ -505,7 +505,7 @@ test("renderSite: siteAssistantEnabled:true injects the widget on a static-tier 
 });
 
 test("renderSite: siteAssistantEnabled:false (or omitted) shows no widget on a static-tier home page — same fail-closed default as every other tier", async () => {
-  const theme = loadTheme({ themeDir: path.join(process.cwd(), "content", "themes", "static", "basic"), id: "basic", source: "built-in" });
+  const theme = loadTheme({ themeDir: path.join(process.cwd(), "content", "themes", "static", "tovu-theme"), id: "tovu-theme", source: "built-in" });
   assert.equal(theme.status, "valid");
 
   const html = await renderSite({ theme, route: "home", siteTitle: "Basic Demo", posts: [] });

@@ -2,7 +2,7 @@ import {
   getPresentationSettings,
   PresentationSettingsNotFoundError,
 } from "#src/features/presentation/index";
-import { validThemeIds } from "#src/features/theme/index";
+import { findStoredTheme, validThemeIds } from "#src/features/theme/index";
 import { toAdminPresentationResponse } from "#src/server/inbound/admin-http/http/presentation";
 import { getAuthedPrincipal } from "#src/server/inbound/admin-http/dev-auth";
 import type { ContentRouteRegistrar } from "../content/deps.js";
@@ -61,7 +61,9 @@ export const registerAdminPresentationGetRoute: ContentRouteRegistrar = (app, de
       // template list, so BOTH the Post editor's and the Pages editor's pickers always reflect
       // whichever theme is actually live right now (one shared field since the unified `content`
       // marker — see `AdminPresentation.activeThemeTemplates`'s own doc).
-      const activeTheme = deps.themes.find((t) => t.manifest.id === result.settings.activeThemeId);
+      // `findStoredTheme`, not an exact match: a stored retired id (`basic`, renamed `tovu-theme`)
+      // still names the active theme, and the response reports the id the theme list shows.
+      const activeTheme = findStoredTheme({ themes: deps.themes, id: result.settings.activeThemeId });
       const activeThemeTemplates = activeTheme?.manifest.templates ?? [];
       // Slug-collision override (2026-08-10) — every page id the active theme ships, so the editor
       // can warn when a post's own slug is currently claimed by one of the theme's own pages.
@@ -75,7 +77,9 @@ export const registerAdminPresentationGetRoute: ContentRouteRegistrar = (app, de
 
       res.json(
         toAdminPresentationResponse({
-          settings: result.settings,
+          settings: activeTheme
+            ? { ...result.settings, activeThemeId: activeTheme.manifest.id as typeof result.settings.activeThemeId }
+            : result.settings,
           availableThemeIds: result.availableThemeIds,
           availableThemes,
           activeThemeTemplates,

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="/theme-assets/tovu-theme/icons/favicon.ico" sizes="any" />
+<link rel="icon" type="image/png" sizes="16x16" href="/theme-assets/tovu-theme/icons/favicon-16x16.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="/theme-assets/tovu-theme/icons/favicon-32x32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/theme-assets/tovu-theme/icons/apple-touch-icon.png" />
+<link rel="manifest" href="/theme-assets/tovu-theme/manifest.webmanifest" />
+<meta name="theme-color" content="#020203" />
+<!-- Fixed 2026-08-11 (was the same disclosed limitation blog-post.html carried: a static theme's
+     <title> being one fixed string per file). Same placeholder `page-shell.html`/`blog-post.html`
+     already use — `injectPageTitle` (static-render.ts) substitutes it with the current entity's
+     own title before render. Do not echo the literal placeholder tag as prose text anywhere else in
+     this file — see that function's own doc for the shadowing bug that caused. -->
+<title>{{title}}</title>
+<link rel="stylesheet" href="../css/theme.css" />
+<script src="../scripts/theme-toggle.js"></script>
+</head>
+<body>
+
+<!-- Marker: shared header (render/partials/nav.html) replaces this line. "current":"docs" highlights the fallback nav link with data-nav-id="docs". -->
+<div data-embed-config='{"type":"partial","id":"nav","current":"docs"}'></div>
+
+<main>
+  <!-- `data-kui="scroll-spy ..."` (2026-08-31, replaces the hand-rolled `docs-sidebar.js` spy below)
+       — the container form of kUInetic's scroll-spy effect (vendored at `../scripts/vendor/
+       kuinetic.all.js`, self-initializing, no init call needed — see this theme's NOTICE.md "Kuinetic
+       vendored" section). `sections:`/`target:` are both quoted because each selector contains a
+       space (and `sections:` a comma), which kuinetic's own grammar would otherwise read as token/
+       effect separators — `sections:'.docs-content h2[id], .docs-content h3[id]'` is ONE quoted
+       value, not two. Placed on `.docs-layout`, the shared ancestor of both the sidebar
+       (`.docs-nav a`) and the content (`.docs-content h2[id]`/`h3[id]`) it pairs by matching each
+       section's `id` against a link's `href="#id"` — exactly what every heading in this template's
+       injected content and every sidebar-menu item already carry, so no extra markup was needed
+       beyond this one attribute. Kuinetic sets `data-kui-active="true"`/`"false"` on each section and
+       its paired link(s) itself; style that attribute in CSS (see `.docs-nav .menu-item > a[data-kui-
+       active="true"]` in theme.css) rather than adding JS here.
+
+       `offset-top:70px` (2026-08-31, header-offset fix) — the sticky `.site-header` sits 70px tall
+       (`.nav-row`'s 69px content height + the header's own 1px border-bottom — see `--header-h` /
+       `--kui-pin-offset` in theme.css) and, without this, a heading was flagged "active" only once
+       it scrolled fully behind the header, invisible. `var(--kui-pin-offset, 0px)` is the token
+       `theme.css` sets for exactly this — and IS what this effect's own `offset-top` schema entry
+       defaults to for kUInetic's sticky/pin effects (`stickyParams`, `kuinetic.all.js`) — but this
+       is deliberately a LITERAL px number, not `var(--kui-pin-offset)`, because the container-form
+       scroll-spy (`prepareScrollSpyContainer`) reads its own `offset-top` param through
+       `toPixels()`, a plain JS regex parser (`NUMBER_WITH_UNIT`) that only accepts a bare
+       number+unit — it never asks the browser to resolve CSS, so a `var(...)`/`calc(...)` string
+       fails to match and silently falls back to 0, reproducing the exact bug this fixes. That
+       parser is also why this container form's `offset-top` param default is a hardcoded `"0px"`
+       (`kuinetic.all.js`'s `prepareScrollSpyContainer`), NOT `var(--kui-pin-offset, 0px)` — the
+       CSS-var default only applies to the separate sticky/pin effects, which set actual CSS `top`
+       and so can lean on the cascade to resolve it. If the header's height ever changes, update
+       both this number and `--header-h` in theme.css together — verified no other path connects
+       them. -->
+  <div class="docs-layout wrap" data-kui="scroll-spy sections:'.docs-content h2[id], .docs-content h3[id]' target:'.docs-nav a' offset-top:70px">
+    <!-- The sidebar is theme markup + CSS; the only thing resolved at request time is the menu
+         inside it. `data-embed-config='{"variant":"tree"}'` opts this one marker into nested
+         <ul>/<li> rendering (see static-render.ts::renderMenuTree) — the default flat <a> output is
+         what every other marker in this theme still gets, because .main-nav's flex layout depends
+         on it. (Marker-spine unification, 2026-08-10: this used to be a bare `data-embed-variant=
+         "tree"` attribute, retired in favor of config — see static-render.ts's own file header.)
+
+         `id="docs-current-page-sidebar"` is a RESERVED marker id (2026-08-31 docs-nav restructure,
+         `pages.ts`'s `resolveStaticMenusForRender`), not the name of one fixed stored menu: the route
+         layer resolves it per request to the menu at slug `docs-<current page's slug>-sidebar`, so
+         every page using this template gets its OWN sidebar just by having a menu at that convention
+         slug — no template duplication needed to add the next docs page.
+
+         The authored content below is a real fallback, not a placeholder: if that per-page menu does
+         not exist yet, or resolves to zero renderable links, this markup is left exactly as-is rather
+         than blanked. -->
+    <aside class="docs-sidebar">
+      <!-- Marker: menu "docs-current-page-sidebar" (Admin > Menus) fills this element as nested lists ("tree"). What is inside is the fallback. -->
+      <nav class="docs-nav" aria-label="Documentation" data-embed-config='{"type":"menu","id":"docs-current-page-sidebar","variant":"tree"}'>
+        <ul class="menu-list depth-0">
+          <li class="menu-item depth-0"><span class="menu-item-label">No docs menu bound yet</span></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- Deliberately no `threshold:` token, and there must never be one again. kUInetic hands
+         `threshold:` straight to IntersectionObserver, where it is a fraction of THIS element's OWN
+         area, not of the viewport — so anything taller than `viewport / threshold` can never reach it.
+         And a deferred (`on:enter`) reveal compiles to `animation-fill-mode: both` +
+         `animation-play-state: paused`, which makes `kui-in-up`'s `from { opacity: 0 }` the element's
+         RESTING style until the observer fires: an unsatisfiable threshold does not merely skip the
+         animation, it leaves the whole page body permanently invisible. This wrapper holds author
+         content, so its height is unbounded and 0 (an unset threshold) is the only value that is
+         satisfiable at every height. See NOTICE.md, "Why the page wrappers carry no threshold:". -->
+    <article class="docs-content post-detail" data-kui="fade-up 600ms expo-out distance:18px on:enter">
+      <!-- Marker: the body of the page or post at this URL goes inside this element. -->
+      <div data-embed-config='{"type":"content"}'></div>
+    </article>
+  </div>
+</main>
+
+<!-- Marker: shared footer (render/partials/footer.html) replaces this line. -->
+<div data-embed-config='{"type":"partial","id":"footer"}'></div>
+
+<script src="../scripts/main.js"></script>
+<script src="../scripts/vendor/kuinetic.all.js"></script>
+<!-- `docs-sidebar.js` (hand-rolled scroll-spy) retired from this template 2026-08-31 — superseded by
+     the `data-kui="scroll-spy ..."` attribute above, which the just-loaded kuinetic bundle drives
+     itself. Left on disk (still used by `basic-2`, which does not vendor kuinetic) rather than
+     deleted, but no longer wired here: running both would toggle two independent, differently-
+     triggered "current section" mechanisms (`is-current`/`is-active` classes vs. `data-kui-active`)
+     against the same sidebar at once. -->
+</body>
+</html>

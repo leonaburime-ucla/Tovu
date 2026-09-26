@@ -1,4 +1,4 @@
-import type { DiscoveredTheme } from "#src/features/theme/index";
+import { findStoredTheme, type DiscoveredTheme } from "#src/features/theme/index";
 import { getAuthedPrincipal } from "#src/server/inbound/admin-http/dev-auth";
 import type { ContentRouteRegistrar } from "../content/deps.js";
 
@@ -79,6 +79,8 @@ export const registerAdminThemesListRoute: ContentRouteRegistrar = (app, deps) =
       // status map lists only "unknown workspace" as a 404 cause. A missing/absent presentation
       // row just means no theme in the list matches `active: true`, not a listing failure.
       const settings = await deps.presentationRepo.findByWorkspaceId(deps.workspaceId);
+      // The theme the stored id resolves to, retired ids included (`theme-id-aliases.ts`).
+      const activeId = settings ? findStoredTheme({ themes: deps.themes, id: settings.activeThemeId })?.manifest.id : undefined;
 
       const themes: ThemeListItem[] = sortThemesForList(deps.themes).map((theme) => ({
         id: theme.manifest.id,
@@ -87,7 +89,7 @@ export const registerAdminThemesListRoute: ContentRouteRegistrar = (app, deps) =
         source: theme.source,
         status: theme.status,
         errors: theme.errors.map((message) => ({ code: null, file: null, message })),
-        active: theme.manifest.id === settings?.activeThemeId,
+        active: theme.manifest.id === activeId,
       }));
 
       res.json({ themes });

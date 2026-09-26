@@ -94,7 +94,7 @@ test.describe("theme visual regression (AW-2)", () => {
  * stale: `tovu-official` no longer exists in this repo and the live workspace's active theme
  * (confirmed via `presentation_settings` in `sites/tovu-com/content.db`, and matching
  * `server/seed.ts`'s own seeded default) is `basic`, whose mobile nav
- * (`content/themes/static/basic/css/theme.css`, `@media (max-width: 640px)`) instead positions
+ * (`content/themes/static/tovu-theme/css/theme.css`, `@media (max-width: 640px)`) instead positions
  * `.main-nav` with `position: absolute; top: 100%` inside the sticky `.site-header` — i.e. the
  * "drive the offset from real header height" fix todos.md lists as a *candidate* already appears
  * to be in place. These assertions exist to prove that empirically (geometry, not just a pixel
@@ -165,7 +165,7 @@ test.describe("AW-1 — mobile nav drawer (basic theme)", () => {
  * equivalent structure is a single element carrying BOTH `.wrap` and `.post-detail`
  * (`blog-post.html`: `<article class="post-detail wrap">`, and `page-shell.html`:
  * `<article class="wrap post-detail">`), and `.post-detail` itself already declares
- * `margin: 0 auto` (`content/themes/static/basic/css/theme.css`) — so there is no inner "prose"
+ * `margin: 0 auto` (`content/themes/static/tovu-theme/css/theme.css`) — so there is no inner "prose"
  * box left anchored inside an outer centered wrap. These assertions check the actual rendered
  * gutters on both a generic post (`/welcome`, `blog-post.html`) and a generic content page
  * (`/about`, a DB-seeded post — NOT the theme's own bundled marketing `about.html` — that renders

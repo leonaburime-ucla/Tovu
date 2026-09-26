@@ -10,6 +10,7 @@ import { lintLiquidTemplate } from "./liquid-allowlist.js";
 // is a pre-existing module pair, now cyclic in the other direction too — safe because both of these
 // are consumed only inside `loadTheme`'s function body below, never at module-evaluation time.
 import { GENERATED_THEME_DIRS, isSourceDirGeneratedConflict } from "./theme-files.js";
+import { themeIdCandidates } from "./theme-id-aliases.js";
 import { resolveThemeLayout } from "./theme-layout.js";
 
 /**
@@ -1389,6 +1390,20 @@ export function findTheme(
 ): DiscoveredTheme | undefined {
   const { themes, id } = required;
   return themes.find((t) => t.manifest.id === id);
+}
+
+/**
+ * {@link findTheme} for a STORED id (the active-theme setting), which may name a renamed theme by
+ * its retired id or name the current id on a site that still only has the retired folder. Tries
+ * `themeIdCandidates(id)` in order (current name first). Explicit per-theme admin routes keep using
+ * the exact {@link findTheme}: they address a theme the listing just showed, by its real id.
+ */
+export function findStoredTheme(required: { themes: DiscoveredTheme[]; id: string }): DiscoveredTheme | undefined {
+  for (const candidate of themeIdCandidates(required.id)) {
+    const theme = findTheme({ themes: required.themes, id: candidate });
+    if (theme) return theme;
+  }
+  return undefined;
 }
 
 /**

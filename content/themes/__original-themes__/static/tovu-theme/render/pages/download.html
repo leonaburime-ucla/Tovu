@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="/theme-assets/tovu-theme/icons/favicon.ico" sizes="any" />
+<link rel="icon" type="image/png" sizes="16x16" href="/theme-assets/tovu-theme/icons/favicon-16x16.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="/theme-assets/tovu-theme/icons/favicon-32x32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/theme-assets/tovu-theme/icons/apple-touch-icon.png" />
+<link rel="manifest" href="/theme-assets/tovu-theme/manifest.webmanifest" />
+<meta name="theme-color" content="#020203" />
+<title>Download — Tovu</title>
+<link rel="stylesheet" href="../css/theme.css" />
+<script src="../scripts/theme-toggle.js"></script>
+</head>
+<body>
+
+<!-- Marker: shared header (render/partials/nav.html) replaces this line. "current":"download" highlights the fallback nav link with data-nav-id="download". -->
+<div data-embed-config='{"type":"partial","id":"nav","current":"download"}'></div>
+
+<main>
+  <section class="download-hero wrap" data-kui="fade-up 600ms expo-out distance:18px on:enter threshold:0.15">
+    <span class="status-pill" style="margin-bottom:24px;"><span class="dot"></span>v2.4.1 — latest</span>
+    <h1 style="font-size: clamp(36px, 5.5vw, 60px); max-width: 16ch; margin: 0 auto 20px;">Get the Basic CLI</h1>
+    <p style="font-size:17px; max-width: 46ch; margin: 0 auto;">One binary, no dependencies. Scaffold, preview, and publish a site from your terminal.</p>
+
+    <div class="install-cmd">
+      <code>curl -fsSL basic.sh/install | sh</code>
+      <button type="button">Copy</button>
+    </div>
+
+    <div class="platform-row">
+      <a href="#" class="btn btn-ghost">macOS (Apple Silicon)</a>
+      <a href="#" class="btn btn-ghost">macOS (Intel)</a>
+      <a href="#" class="btn btn-ghost">Linux (x64)</a>
+      <a href="#" class="btn btn-ghost">Windows</a>
+    </div>
+  </section>
+
+  <section class="band wrap">
+    <div class="section-head" style="text-align:center; max-width: 56ch; margin: 0 auto 40px;">
+      <span class="kicker" style="display:block;">Also available via</span>
+      <h2 style="font-size: 26px;">Install through your package manager</h2>
+    </div>
+    <div class="feature-grid" data-kui-stagger="70ms">
+      <div class="feature-card" data-kui="fade-up 600ms expo-out distance:18px on:enter threshold:0.15">
+        <h3>Homebrew</h3>
+        <p style="font: 13px/1.5 var(--font-mono); margin-top: 8px;">brew install basic-cli</p>
+      </div>
+      <div class="feature-card" data-kui="fade-up 600ms expo-out distance:18px on:enter threshold:0.15">
+        <h3>npm</h3>
+        <p style="font: 13px/1.5 var(--font-mono); margin-top: 8px;">npm install -g basic-cli</p>
+      </div>
+      <div class="feature-card" data-kui="fade-up 600ms expo-out distance:18px on:enter threshold:0.15">
+        <h3>Cargo</h3>
+        <p style="font: 13px/1.5 var(--font-mono); margin-top: 8px;">cargo install basic-cli</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Marker: shared footer (render/partials/footer.html) replaces this line. -->
+<div data-embed-config='{"type":"partial","id":"footer"}'></div>
+
+<script src="../scripts/main.js"></script>
+<script src="../scripts/vendor/kuinetic.all.js"></script>
+</body>
+</html>

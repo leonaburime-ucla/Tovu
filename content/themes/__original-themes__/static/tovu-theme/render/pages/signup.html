@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="/theme-assets/tovu-theme/icons/favicon.ico" sizes="any" />
+<link rel="icon" type="image/png" sizes="16x16" href="/theme-assets/tovu-theme/icons/favicon-16x16.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="/theme-assets/tovu-theme/icons/favicon-32x32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/theme-assets/tovu-theme/icons/apple-touch-icon.png" />
+<link rel="manifest" href="/theme-assets/tovu-theme/manifest.webmanifest" />
+<meta name="theme-color" content="#020203" />
+<title>Get started — Tovu</title>
+<link rel="stylesheet" href="../css/theme.css" />
+<script src="../scripts/theme-toggle.js"></script>
+</head>
+<body>
+
+<!-- Marker: shared header (render/partials/nav.html) replaces this line. "current":"signup" highlights the fallback nav link with data-nav-id="signup". -->
+<div data-embed-config='{"type":"partial","id":"nav","current":"signup"}'></div>
+
+<main class="auth-wrap" data-kui="fade-up 600ms expo-out distance:18px on:enter threshold:0.15">
+  <h1>Create your account</h1>
+  <p class="lede">Free up to 3 published sites. No card required.</p>
+
+  <form onsubmit="return false;">
+    <div class="field">
+      <label for="name">Full name</label>
+      <input type="text" id="name" name="name" placeholder="Ada Lovelace" required />
+    </div>
+    <div class="field">
+      <label for="email">Work email</label>
+      <input type="email" id="email" name="email" placeholder="you@company.com" required />
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" placeholder="At least 8 characters" required minlength="8" />
+    </div>
+    <button type="submit" class="btn btn-solid btn-block btn-lg" style="margin-top: 8px;">Create account</button>
+  </form>
+
+  <div class="divider">or</div>
+  <button type="button" class="btn btn-ghost btn-block">Continue with GitHub</button>
+
+  <p class="auth-foot">Already have an account? <a href="signin.html">Sign in</a></p>
+</main>
+
+<!-- Marker: shared footer, "minimal" variant (footer-minimal.html, named in theme.json slots) replaces this line. -->
+<div data-embed-config='{"type":"partial","id":"footer","variant":"minimal"}'></div>
+
+<script src="../scripts/main.js"></script>
+<script src="../scripts/vendor/kuinetic.all.js"></script>
+</body>
+</html>

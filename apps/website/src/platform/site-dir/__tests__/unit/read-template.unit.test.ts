@@ -22,7 +22,7 @@ import { seededWorkspace, seededPosts, seededPresentation } from "#src/server/ru
  * (Disclosed drift: feature.spec.md's AC-02 prose names "glass-demo post" and presentation theme
  * "paper" as illustrative examples; the actual current `server/seed.ts` — the REQ-02 binding
  * source of truth, "equals today's seed module output" — has since evolved past those specific
- * names (8 posts, `activeThemeId: "basic"`). REQ-02's binding rule is content-equality
+ * names (8 posts, `activeThemeId: "tovu-theme"`). REQ-02's binding rule is content-equality
  * with the live seed module, not with the spec narrative's now-stale example names, so this test
  * derives its expectation from the live `server/seed.ts` export rather than hardcoding the
  * narrative's specific (outdated) post titles.)

@@ -51,12 +51,12 @@ test("canary: every marker in every migrated theme file parses, with zero reject
   // The whole point of the sweep. One unparseable marker anywhere means a broken page in production
   // AND a reference silently missing from the entry_refs index that safe-delete trusts.
   const files = [
-    pagePath("basic", "index"),
-    pagePath("basic", "signin"),
-    pagePath("basic", "blog-sidebar-template"),
-    pagePath("basic", "blog-post"),
-    partialPath("basic", "nav"),
-    partialPath("basic", "footer"),
+    pagePath("tovu-theme", "index"),
+    pagePath("tovu-theme", "signin"),
+    pagePath("tovu-theme", "blog-sidebar-template"),
+    pagePath("tovu-theme", "blog-post"),
+    partialPath("tovu-theme", "nav"),
+    partialPath("tovu-theme", "footer"),
     pagePath("tailark-quartz-libre", "index"),
     pagePath("tailark-quartz-libre", "blog-post"),
     pagePath("tailark-dusk", "index"),
@@ -84,7 +84,7 @@ test("canary: no theme still carries an attribute from the retired vocabularies"
     "data-slot-variant=",
     "data-nav-current=",
   ];
-  const files = [pagePath("basic", "index"), partialPath("basic", "nav"), pagePath("basic", "signin"), pagePath("tailark-dusk", "index")];
+  const files = [pagePath("tovu-theme", "index"), partialPath("tovu-theme", "nav"), pagePath("tovu-theme", "signin"), pagePath("tailark-dusk", "index")];
   for (const file of files) {
     // Comments legitimately mention the old names; only live markup matters, so strip comments first.
     const live = read(file).replace(/<!--[\s\S]*?-->/g, "");
@@ -95,21 +95,21 @@ test("canary: no theme still carries an attribute from the retired vocabularies"
 });
 
 test("canary: the nav partial marker carries type, id, and its current-page key", () => {
-  const { markers } = scanEmbedMarkers(read(pagePath("basic", "index")));
+  const { markers } = scanEmbedMarkers(read(pagePath("tovu-theme", "index")));
   const nav = markers.find((m) => m.type === "partial" && m.id === "nav");
   assert.ok(nav, "basic/index.html must reference the nav partial");
   assert.equal(nav.config.current, "index", "the current-page hint must survive the migration into config");
 });
 
 test("canary: the footer variant survived as a config key, not a lost attribute", () => {
-  const { markers } = scanEmbedMarkers(read(pagePath("basic", "signin")));
+  const { markers } = scanEmbedMarkers(read(pagePath("tovu-theme", "signin")));
   const footer = markers.find((m) => m.type === "partial" && m.id === "footer");
   assert.ok(footer, "signin.html must reference the footer partial");
   assert.equal(footer.config.variant, "minimal", "signin uses the minimal footer — losing this is a silent visual regression");
 });
 
 test("canary: the docs sidebar keeps its tree variant AND its authored fallback content", () => {
-  const html = read(pagePath("basic", "blog-sidebar-template"));
+  const html = read(pagePath("tovu-theme", "blog-sidebar-template"));
   const menu = markersOfType(html, "menu")[0];
   assert.ok(menu, "the docs template must reference a menu");
   // `docs-current-page-sidebar` (2026-08-31 docs-nav restructure) — the reserved sentinel id that
@@ -129,7 +129,7 @@ test("canary: the real theme's content-slot marker carries no id, and a real id 
   // time by `injectCurrentEntityContentId`/`withAddedId` rather than a pre-authored placeholder
   // string. The property worth canary-testing against the real file is now the ADD-an-id path itself:
   // it must produce legal, re-parseable JSON for the theme's own real (not synthetic) marker shape.
-  const html = read(pagePath("basic", "blog-post"));
+  const html = read(pagePath("tovu-theme", "blog-post"));
   const { markers, rejected } = scanEmbedMarkers(html);
   assert.deepEqual(rejected, []);
   const content = markers.find((m) => m.type === "content");
@@ -146,7 +146,7 @@ test("canary: the real theme's content-slot marker carries no id, and a real id 
 test("canary: other authored attributes on a marker element are preserved verbatim", () => {
   // The docs nav carries class and aria-label. A substitution that rebuilds the tag from config
   // alone would drop them — losing styling and the accessible name with no test failing elsewhere.
-  const html = read(pagePath("basic", "blog-sidebar-template"));
+  const html = read(pagePath("tovu-theme", "blog-sidebar-template"));
   const menu = markersOfType(html, "menu")[0];
   assert.ok(menu.attrs.includes('class="docs-nav"'), menu.attrs);
   assert.ok(menu.attrs.includes('aria-label="Documentation"'), menu.attrs);

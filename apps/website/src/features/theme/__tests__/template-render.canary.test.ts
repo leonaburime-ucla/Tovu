@@ -29,7 +29,7 @@ import type { DiscoveredTheme, StaticMenuItem } from "../index.js";
  * resolve-html-format-content-markers.test.ts` instead.
  */
 
-const THEME_DIR = path.resolve(import.meta.dirname, "../../../../../../content/themes/static/basic");
+const THEME_DIR = path.resolve(import.meta.dirname, "../../../../../../content/themes/static/tovu-theme");
 
 function read(relative: string): string {
   return fs.readFileSync(path.join(THEME_DIR, relative), "utf8");

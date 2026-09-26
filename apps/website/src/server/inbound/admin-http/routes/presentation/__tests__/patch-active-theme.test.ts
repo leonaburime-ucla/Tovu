@@ -76,7 +76,7 @@ async function patch(t: import("node:test").TestContext, app: express.Express, b
 
 test("presentation patch: mismatched workspaceId 404s", async (t) => {
   const app = buildApp();
-  const { status, json } = await patch(t, app, { activeThemeId: "basic" }, "/api/admin/v1/workspaces/not-real/presentation");
+  const { status, json } = await patch(t, app, { activeThemeId: "tovu-theme" }, "/api/admin/v1/workspaces/not-real/presentation");
   assert.equal(status, 404);
   assert.deepEqual(json, { error: "workspace was not found" });
 });
@@ -91,7 +91,7 @@ test("presentation patch: a body with no activeThemeId falls back to '' via `req
 test("presentation patch: no presentation_settings row for the workspace surfaces PresentationSettingsNotFoundError as a 404, even for a validly-shaped theme id", async (t) => {
   const base = createRouteDeps();
   const app = buildApp({ presentationRepo: new InMemoryPresentationSettingsRepo([]), themes: base.themes });
-  const { status, json } = await patch(t, app, { activeThemeId: "basic" });
+  const { status, json } = await patch(t, app, { activeThemeId: "tovu-theme" });
   assert.equal(status, 404);
   assert.deepEqual(json, {
     error: `presentation settings for workspace '${WORKSPACE_ID}' were not found`,
@@ -112,7 +112,7 @@ test("presentation patch: a theme that vanishes from `deps.themes` between valid
         // Simulates a concurrent `POST .../themes/rescan` (rescan-themes.ts's `rescanThemes` mutates
         // this exact array in place via `themes.length = 0; themes.push(...)`) landing mid-request,
         // after `setActiveTheme`'s synchronous `allowed.includes(...)` check already passed but
-        // before this route's own post-save `deps.themes.find(...)` runs.
+        // before this route's own post-save `findStoredTheme(...)` lookup runs.
         themes.length = 0;
         return existing;
       },
@@ -120,14 +120,14 @@ test("presentation patch: a theme that vanishes from `deps.themes` between valid
       listAll: () => base.presentationRepo.listAll(),
     },
   });
-  const { status, json } = await patch(t, app, { activeThemeId: "basic" });
+  const { status, json } = await patch(t, app, { activeThemeId: "tovu-theme" });
   assert.equal(status, 200, JSON.stringify(json));
   const body = json as {
     settings: { activeThemeId: string };
     activeThemeTemplates: string[];
     activeThemeStaticPageIds: string[];
   };
-  assert.equal(body.settings.activeThemeId, "basic");
+  assert.equal(body.settings.activeThemeId, "tovu-theme");
   assert.deepEqual(body.activeThemeTemplates, []);
   assert.deepEqual(body.activeThemeStaticPageIds, []);
 });
@@ -146,7 +146,7 @@ test("presentation patch: an unexpected repo failure 500s", async (t) => {
       listAll: () => base.presentationRepo.listAll(),
     },
   });
-  const { status, json } = await patch(t, app, { activeThemeId: "basic" });
+  const { status, json } = await patch(t, app, { activeThemeId: "tovu-theme" });
   assert.equal(status, 500);
   assert.deepEqual(json, { error: "internal error" });
 });
@@ -156,7 +156,7 @@ test("presentation patch: workspaceId param can never actually be undefined thro
   const handler = extractRouteHandler(app, "patch", "/api/admin/v1/workspaces/:workspaceId/presentation");
 
   const { res, capture } = createCapturingResponse();
-  const req = { params: { workspaceId: undefined }, body: { activeThemeId: "basic" } } as unknown as Parameters<
+  const req = { params: { workspaceId: undefined }, body: { activeThemeId: "tovu-theme" } } as unknown as Parameters<
     typeof handler
   >[0];
   await handler(req, res);

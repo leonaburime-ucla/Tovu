@@ -1,4 +1,4 @@
-import { findTheme, validThemeIds, type DiscoveredTheme } from "./theme.js";
+import { findStoredTheme, validThemeIds, type DiscoveredTheme } from "./theme.js";
 
 /**
  * @file "Given a list of discovered themes and a candidate active id, which theme actually
@@ -57,7 +57,9 @@ export interface ActiveThemeResolutionDeps {
  * the pre-existing 36-module SCC and `features/theme` is not, so a constant consumed by
  * `resolveActiveTheme` must not create that edge.
  */
-export const DEFAULT_THEME_ID = "basic";
+// Renamed from `basic` 2026-09-26; sites still holding a `basic` folder or a stored `basic` id
+// resolve through `theme-id-aliases.ts`.
+export const DEFAULT_THEME_ID = "tovu-theme";
 
 /**
  * Stored in `active_theme_id` to mean "the operator deliberately turned the theme OFF" — state 3 of
@@ -135,10 +137,10 @@ export type ActiveThemeResolution = DiscoveredTheme | typeof NO_THEME_ID | null;
 export function resolveActiveTheme(deps: ActiveThemeResolutionDeps, activeThemeId: string): ActiveThemeResolution {
   if (activeThemeId === NO_THEME_ID) return NO_THEME_ID;
 
-  const active = findTheme({ themes: deps.themes, id: activeThemeId });
+  const active = findStoredTheme({ themes: deps.themes, id: activeThemeId });
   if (active && active.status === "valid") return active;
 
-  const named = findTheme({ themes: deps.themes, id: DEFAULT_THEME_ID });
+  const named = findStoredTheme({ themes: deps.themes, id: DEFAULT_THEME_ID });
   if (named && named.status === "valid") {
     console.warn(
       `[theme] active theme '${activeThemeId}' did not resolve; falling back to the default theme '${DEFAULT_THEME_ID}'`

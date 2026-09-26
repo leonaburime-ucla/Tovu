@@ -76,10 +76,10 @@ test("no CSS at all reports every replaced element as unconstrained", () => {
 
 test("REGRESSION: the real shipped basic theme.css constrains img, video, and iframe", () => {
   const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..", "..");
-  const cssPath = path.join(REPO_ROOT, "content", "themes", "static", "basic", "css", "theme.css");
+  const cssPath = path.join(REPO_ROOT, "content", "themes", "static", "tovu-theme", "css", "theme.css");
   assert.ok(fs.existsSync(cssPath), `expected ${cssPath} to exist`);
 
-  const theme: ThemeStylesheets = { themeId: "basic", themeDir: path.dirname(path.dirname(cssPath)), cssFiles: [cssPath] };
+  const theme: ThemeStylesheets = { themeId: "tovu-theme", themeDir: path.dirname(path.dirname(cssPath)), cssFiles: [cssPath] };
   const finding = checkTheme(theme);
 
   assert.equal(

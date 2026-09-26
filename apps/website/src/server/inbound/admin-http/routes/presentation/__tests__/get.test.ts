@@ -126,3 +126,16 @@ test("presentation get: workspaceId param can never actually be undefined throug
   assert.equal(capture.statusCode, 404);
   assert.deepEqual(capture.jsonBody, { error: "workspace was not found" });
 });
+
+test("presentation get: a stored retired theme id (`basic`, renamed `tovu-theme`) reports the renamed theme as active", async (t) => {
+  const app = buildApp({
+    presentationRepo: new InMemoryPresentationSettingsRepo([
+      { workspaceId: WORKSPACE_ID, activeThemeId: "basic", updatedAt: "2026-09-26T00:00:00.000Z" },
+    ]),
+  });
+  const { status, json } = await get(t, app);
+  assert.equal(status, 200, JSON.stringify(json));
+  const body = json as { settings: { activeThemeId: string }; activeThemeTemplates: string[] };
+  assert.equal(body.settings.activeThemeId, "tovu-theme");
+  assert.ok(body.activeThemeTemplates.length > 0, "the renamed theme's own templates must be offered");
+});

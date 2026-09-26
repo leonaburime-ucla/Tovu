@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="/theme-assets/tovu-theme/icons/favicon.ico" sizes="any" />
+<link rel="icon" type="image/png" sizes="16x16" href="/theme-assets/tovu-theme/icons/favicon-16x16.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="/theme-assets/tovu-theme/icons/favicon-32x32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/theme-assets/tovu-theme/icons/apple-touch-icon.png" />
+<link rel="manifest" href="/theme-assets/tovu-theme/manifest.webmanifest" />
+<meta name="theme-color" content="#020203" />
+<!-- Unlike blog-post.html's per-file fixed <title> (a disclosed, accepted limitation there — no post
+     ever gets its own tab title through that template), the tag directly below carries a literal
+     placeholder that `injectPageTitle` (static-render.ts) substitutes with the Page's OWN title
+     before render — the same string-substitution idea `injectPostEmbedId` already applies to a
+     marker's own id attribute. A page rendered through this template keeps its real <title> (e.g.
+     "FAQ", "Terms of Service") instead of a generic one, which matters here specifically: these five
+     legacy Pages used to render "Blog post — Basic" for exactly this reason (a hardcoded template
+     title) — see Task 1's render-gate fix — and reintroducing a hardcoded title here would bring that
+     bug back through a different door. Deliberately not spelled out literally in THIS comment: the
+     placeholder text appearing as prose here once shadowed the real one below and silently ate the
+     substitution — see `injectPageTitle`'s own doc for the fix and how the match is now scoped so
+     that cannot recur. -->
+<title>{{title}}</title>
+<link rel="stylesheet" href="../css/theme.css" />
+<script src="../scripts/theme-toggle.js"></script>
+</head>
+<body>
+
+<!-- THE POINT OF THIS FILE: it is structure only. Every line below is either a marker or a wrapper
+     element. There is no nav markup here, no footer markup, and no page content — a page rendered
+     through this layout cannot forget its sidebar or its footer, because they were never its to
+     author. The theme supplies the frame on every render; the page supplies only what goes in the
+     hole.
+
+     That is also why this file is cheap to customize. Themes are COPIED from a pristine catalog, not
+     resolved through a runtime `parent` chain (2026-08-11 — the earlier `basic-child`/parent-theme
+     inheritance model this file originally shipped under was deleted the same day it was recovered
+     from history for this purpose). An author editing THIS theme's own copy of page-shell.html is
+     editing ~10 lines of pure structure, not a whole page: nav.html/footer.html still hold the real
+     nav and footer CONTENT, untouched by any edit here. Removing the footer means deleting one line;
+     swapping to the minimal footer means changing one marker's id to "footer-minimal". Compare a
+     WordPress child theme, where the fork unit is a whole PHP template carrying markup, the loop,
+     escaping, and hooks. -->
+
+<!-- Marker: shared header (render/partials/nav.html) replaces this line. Empty "current" highlights no fallback link. -->
+<div data-embed-config='{"type":"partial","id":"nav","current":""}'></div>
+
+<main>
+  <!-- `.post-detail` reads post-specific by name but is the theme's shared long-form-article style
+       (max-width, padding, heading/paragraph/list/code typography) — verified in css/styles.css and
+       already reused by blog-sidebar-template.html's docs article for the same reason, not something
+       introduced here. Legal/FAQ/team copy is exactly this kind of prose, so this keeps the theme's
+       one article style rather than authoring a second, near-identical one under a page-specific name. -->
+  <!-- Deliberately no `threshold:` token, and there must never be one again. kUInetic hands
+       `threshold:` straight to IntersectionObserver, where it is a fraction of THIS element's OWN
+       area, not of the viewport — so anything taller than `viewport / threshold` can never reach it.
+       And a deferred (`on:enter`) reveal compiles to `animation-fill-mode: both` +
+       `animation-play-state: paused`, which makes `kui-in-up`'s `from { opacity: 0 }` the element's
+       RESTING style until the observer fires: an unsatisfiable threshold does not merely skip the
+       animation, it leaves the whole page body permanently invisible. This wrapper holds author
+       content, so its height is unbounded and 0 (an unset threshold) is the only value that is
+       satisfiable at every height. See NOTICE.md, "Why the page wrappers carry no threshold:". -->
+  <article class="wrap post-detail" data-kui="fade-up 600ms expo-out distance:18px on:enter">
+    <!-- Marker: the body of the page or post at this URL goes inside this element. -->
+    <div data-embed-config='{"type":"content"}'></div>
+  </article>
+</main>
+
+<!-- Marker: shared footer (render/partials/footer.html) replaces this line. -->
+<div data-embed-config='{"type":"partial","id":"footer"}'></div>
+
+<script src="../scripts/main.js"></script>
+<script src="../scripts/vendor/kuinetic.all.js"></script>
+</body>
+</html>

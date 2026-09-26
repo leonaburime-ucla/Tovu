@@ -98,8 +98,8 @@ async function drainBootReadiness(deps: RouteDeps): Promise<void> {
 
 /** `/pricing` ships unpublished; flip it on in memory only, as `site-title.integration.test.ts` does. */
 function publishPricingPage(deps: RouteDeps): void {
-  const basic = deps.themes.find((theme) => theme.manifest.id === "basic");
-  if (!basic) throw new Error("expected the site's 'basic' theme to be discovered");
+  const basic = deps.themes.find((theme) => theme.manifest.id === "tovu-theme");
+  if (!basic) throw new Error("expected the site's 'tovu-theme' theme to be discovered");
   basic.manifest.publishedPages = [...(basic.manifest.publishedPages ?? []), "pricing"];
 }
 

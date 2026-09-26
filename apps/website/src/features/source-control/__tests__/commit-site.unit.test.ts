@@ -417,7 +417,7 @@ test("commitSiteToSourceControl: an asset that fails to export blocks the commit
   // `exportSiteBound` doc for this same gotcha, generalized (as of 2026-08-20 pass 2, `createSiteApp`
   // ITSELF is now one of the closure-bound fields the generalized rule covers, not just
   // `exportSiteBound` — one more reason this must stay a mutation, not a spread).
-  deps.createSiteApp = createSiteAppWithFailingAsset("/theme-assets/basic/css/theme.css", deps);
+  deps.createSiteApp = createSiteAppWithFailingAsset("/theme-assets/tovu-theme/css/theme.css", deps);
 
   const result = await commitSiteToSourceControl(
     { credentialDeps: { repo: deps.sourceControlCredentialSetRepo, sealer: deps.siteAssistantSecretSealer }, gitAdapter: neverCalledGitAdapter() },
@@ -429,7 +429,7 @@ test("commitSiteToSourceControl: an asset that fails to export blocks the commit
   assert.equal(result.code, "EXPORT_FAILED");
   assert.equal(
     result.message,
-    "refused to commit: 1 asset(s) failed to export (first: '/theme-assets/basic/css/theme.css' — GET /theme-assets/basic/css/theme.css -> 500)"
+    "refused to commit: 1 asset(s) failed to export (first: '/theme-assets/tovu-theme/css/theme.css' — GET /theme-assets/tovu-theme/css/theme.css -> 500)"
   );
 });
 

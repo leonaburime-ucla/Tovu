@@ -49,7 +49,7 @@ function buildTestApp(): express.Express {
   return app;
 }
 
-const BASE = `/api/admin/v1/workspaces/${WORKSPACE_ID}/themes/basic`;
+const BASE = `/api/admin/v1/workspaces/${WORKSPACE_ID}/themes/tovu-theme`;
 
 test("the real v2 'basic' theme classifies render/pages/*.html as 'page', editable", async (t) => {
   const app = buildTestApp();

@@ -314,7 +314,7 @@ test.describe("Post editor Preview tab — which of the four branches renders", 
   // STATIC-tier theme that declares `templates`, which this suite's hermetic `TOVU_DB=memory` boot
   // does not have." Live evidence from authoring the branch-3 fix above casts doubt on that premise —
   // a brand-new post in this exact hermetic boot auto-received `templateChoice=blog-post.html` in the
-  // pending-content request, and `content/themes/static/basic/theme.json` (this boot's seeded theme) DOES
+  // pending-content request, and `content/themes/static/tovu-theme/theme.json` (this boot's seeded theme) DOES
   // declare `"templates": ["blog-post.html", ...]`. Branch 2 may be reachable after all; left as a
   // disclosed, unresolved gap rather than re-scoped and fixed here (out of this fix's own assigned
   // scope — the pending-content branch, not branch-2 coverage).

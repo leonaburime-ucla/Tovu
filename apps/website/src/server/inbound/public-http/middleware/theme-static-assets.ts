@@ -4,6 +4,7 @@ import express from "express";
 import type { Express } from "express";
 
 import { resolvePathWithin } from "#src/contracts/core/index";
+import { themeIdCandidates } from "#src/features/theme/theme-id-aliases";
 
 import { themeAssetSecurityHeaders } from "./theme-content-security-headers.js";
 
@@ -66,12 +67,21 @@ export function registerThemeStaticAssets(app: Express, required: { themeRoots: 
 
   app.use("/theme-assets/:themeId", themeAssetSecurityHeaders, (req, res, next) => {
     const themeId = String(req.params.themeId ?? "");
-    const themeDir = resolveThemeDir(roots, themeId);
-    if (themeDir === null) {
-      next();
-      return;
-    }
-    express.static(themeDir)(req, res, next);
+    // A renamed theme answers to both ids (`theme-id-aliases.ts`): old `/theme-assets/basic/...`
+    // URLs baked into stored content keep resolving after the rename, on sites that have either
+    // folder. Current name first; a file missing there falls through to the retired folder.
+    const themeDirs = [...new Set(themeIdCandidates(themeId).map((id) => resolveThemeDir(roots, id)))].filter(
+      (dir): dir is string => dir !== null
+    );
+    const serveFrom = (index: number): void => {
+      const themeDir = themeDirs[index];
+      if (themeDir === undefined) {
+        next();
+        return;
+      }
+      express.static(themeDir)(req, res, (err?: unknown) => (err ? next(err) : serveFrom(index + 1)));
+    };
+    serveFrom(0);
   });
 }
 

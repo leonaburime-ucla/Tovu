@@ -43,8 +43,8 @@ function assertSingleTitle(html: string, expected: string, surface: string): voi
 
 /** `/pricing` ships unpublished; flip it on in memory only, exactly as `seo-site-serving.test.ts` T045b does. */
 function publishPricingPage(deps: RouteDeps): void {
-  const basic = deps.themes.find((theme) => theme.manifest.id === "basic");
-  if (!basic) throw new Error("expected the built-in 'basic' theme to be discovered");
+  const basic = deps.themes.find((theme) => theme.manifest.id === "tovu-theme");
+  if (!basic) throw new Error("expected the built-in 'tovu-theme' theme to be discovered");
   basic.manifest.publishedPages = [...(basic.manifest.publishedPages ?? []), "pricing"];
 }
 

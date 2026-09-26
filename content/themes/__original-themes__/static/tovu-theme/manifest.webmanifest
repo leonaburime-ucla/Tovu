@@ -1,0 +1,14 @@
+{
+  "name": "Tovu",
+  "short_name": "Tovu",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020203",
+  "theme_color": "#020203",
+  "icons": [
+    { "src": "/theme-assets/tovu-theme/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/theme-assets/tovu-theme/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/theme-assets/tovu-theme/icons/maskable-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/theme-assets/tovu-theme/icons/maskable-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

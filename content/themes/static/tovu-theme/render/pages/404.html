@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="/theme-assets/tovu-theme/icons/favicon.ico" sizes="any" />
+<link rel="icon" type="image/png" sizes="16x16" href="/theme-assets/tovu-theme/icons/favicon-16x16.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="/theme-assets/tovu-theme/icons/favicon-32x32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/theme-assets/tovu-theme/icons/apple-touch-icon.png" />
+<link rel="manifest" href="/theme-assets/tovu-theme/manifest.webmanifest" />
+<meta name="theme-color" content="#020203" />
+<title>Page not found — Tovu</title>
+<link rel="stylesheet" href="../css/theme.css" />
+<script src="../scripts/theme-toggle.js"></script>
+</head>
+<body>
+
+<!-- Marker: shared header (render/partials/nav.html) replaces this line. "current":"404" highlights the fallback nav link with data-nav-id="404". -->
+<div data-embed-config='{"type":"partial","id":"nav","current":"404"}'></div>
+
+<main>
+  <section class="hero wrap" data-kui="fade-up 600ms expo-out distance:18px on:enter threshold:0.15">
+    <div class="eyebrow-row">
+      <span class="status-pill"><span class="dot"></span>404</span>
+    </div>
+    <h1>This page shipped without a route</h1>
+    <p class="lede">The page you're looking for doesn't exist, or moved. Try the nav above, or head back home.</p>
+    <div class="cta-row">
+      <a href="index.html" class="btn btn-solid btn-lg">Back home</a>
+      <a href="docs.html" class="btn btn-ghost btn-lg">Read the docs</a>
+    </div>
+  </section>
+</main>
+
+<!-- Marker: shared footer (render/partials/footer.html) replaces this line. -->
+<div data-embed-config='{"type":"partial","id":"footer"}'></div>
+
+<script src="../scripts/main.js"></script>
+<script src="../scripts/vendor/kuinetic.all.js"></script>
+</body>
+</html>

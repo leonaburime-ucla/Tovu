@@ -77,7 +77,7 @@ test("stock themes resolve to content/themes via the product-root walk-up, landi
   );
   assert.equal(builtInThemesDir(), path.join(REPO_ROOT, "content", "themes"));
   assert.ok(existsSync(builtInThemesDir()), `${builtInThemesDir()} does not exist`);
-  assert.ok(existsSync(path.join(builtInThemesDir(), "static", "basic", "theme.json")));
+  assert.ok(existsSync(path.join(builtInThemesDir(), "static", "tovu-theme", "theme.json")));
 });
 
 test("bundled agent plugins resolve to content/agent-plugins via the product-root walk-up", () => {

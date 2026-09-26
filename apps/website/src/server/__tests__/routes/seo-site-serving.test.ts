@@ -159,8 +159,8 @@ test("T045b: a static-tier marketing /:slug page (no backing post) also gets SEO
   // 2026-08-19, 11 days earlier) predates. Mutating the in-memory `DiscoveredTheme` here — never
   // the file on disk — simulates exactly what that route's one write does (flip this one page on)
   // without touching the shared `content/themes/` tree every other test and agent reads from.
-  const activeTheme = deps.themes.find((t) => t.manifest.id === "basic");
-  if (!activeTheme) throw new Error("expected the built-in 'basic' theme to be discovered");
+  const activeTheme = deps.themes.find((t) => t.manifest.id === "tovu-theme");
+  if (!activeTheme) throw new Error("expected the built-in 'tovu-theme' theme to be discovered");
   activeTheme.manifest.publishedPages = [...(activeTheme.manifest.publishedPages ?? []), "pricing"];
 
   const app = createApp(deps);

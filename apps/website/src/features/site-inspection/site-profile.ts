@@ -2,7 +2,7 @@
 // This module otherwise imports nothing, which is deliberate for `RouteDeps` (see `deps.ts`'s
 // header on the structural-declaration discipline) but was never a rule about VALUES: a second
 // literal spelling of "no theme" here is exactly the drift that discipline exists to prevent.
-import { NO_THEME_ID } from "../theme/index.js";
+import { NO_THEME_ID, themeIdCandidates } from "../theme/index.js";
 
 import {
   authorizeAndCollectSection,
@@ -480,7 +480,12 @@ async function collectTheme(deps: SiteProfileDeps): Promise<CollectedSection<Sit
   return {
     data: {
       activeThemeId,
-      active: installed.find((theme) => theme.id === activeThemeId) ?? null,
+      active:
+        activeThemeId === null
+          ? null
+          : (themeIdCandidates(activeThemeId)
+              .map((id) => installed.find((theme) => theme.id === id))
+              .find((theme) => theme !== undefined) ?? null),
       themeDisabled: activeThemeId === NO_THEME_ID,
       installed,
     },

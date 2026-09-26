@@ -6,7 +6,7 @@ import { loginAsAdmin } from "./auth-fixtures.js";
  *  which varies by how the suite is invoked; anchoring to `import.meta.dirname` (this file's own directory,
  *  matching `byok-google-live-smoke.spec.ts`/`placeholder-tabs-card-parity.spec.ts`'s own
  *  precedent in this directory) makes the fixture path invocation-independent. */
-const BASIC_THEME_CSS_PATH = path.resolve(import.meta.dirname, "../../content/themes/static/basic/css/styles.css");
+const BASIC_THEME_CSS_PATH = path.resolve(import.meta.dirname, "../../content/themes/static/tovu-theme/css/styles.css");
 
 /**
  * @file Regression coverage for the owner-reported bug (2026-08-12): "embed an image [in the

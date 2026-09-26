@@ -131,6 +131,31 @@ test("registerThemeStaticAssets: .tovu-migrate-staging-* scratch directories are
   }, [rootA]);
 });
 
+test("registerThemeStaticAssets: the retired `basic` id serves the renamed `tovu-theme` folder, current name first, retired folder as file-level fallback", async (t) => {
+  // `basic` -> `tovu-theme` (2026-09-26, `theme-id-aliases.ts`): `/theme-assets/basic/...` URLs are
+  // baked into stored content, and sites seeded before the rename only have a `basic` folder.
+  const renamedOnly = makeThemeFixture("alias-renamed", { "tovu-theme/css/theme.css": "renamed" });
+  const retiredOnly = makeThemeFixture("alias-retired", { "basic/css/theme.css": "retired" });
+  const both = makeThemeFixture("alias-both", {
+    "tovu-theme/css/theme.css": "renamed",
+    "basic/css/theme.css": "retired",
+    "basic/css/only-in-retired.css": "retired-only",
+  });
+  t.after(() => [renamedOnly, retiredOnly, both].forEach((dir) => rmSync(dir, { recursive: true, force: true })));
+
+  await withTempApp(async (baseUrl) => {
+    assert.equal(await (await fetch(`${baseUrl}/theme-assets/basic/css/theme.css`)).text(), "renamed");
+  }, [renamedOnly]);
+  await withTempApp(async (baseUrl) => {
+    assert.equal(await (await fetch(`${baseUrl}/theme-assets/tovu-theme/css/theme.css`)).text(), "retired");
+  }, [retiredOnly]);
+  await withTempApp(async (baseUrl) => {
+    assert.equal(await (await fetch(`${baseUrl}/theme-assets/basic/css/theme.css`)).text(), "renamed");
+    assert.equal(await (await fetch(`${baseUrl}/theme-assets/tovu-theme/css/only-in-retired.css`)).text(), "retired-only");
+    assert.equal((await fetch(`${baseUrl}/theme-assets/basic/css/missing.css`)).status, 404);
+  }, [both]);
+});
+
 test("registerThemeStaticAssets: path traversal in the themeId segment cannot escape either root", async (t) => {
   const rootA = makeThemeFixture("trav-a", { "real-theme/ok.txt": "fine" });
   t.after(() => rmSync(rootA, { recursive: true, force: true }));
@@ -263,8 +288,8 @@ test("createApp(): the real 'basic' static theme's real css/theme.css still serv
   if (address === null || typeof address === "string") throw new Error("expected a real listening address");
   const baseUrl = `http://127.0.0.1:${address.port}`;
 
-  const onDisk = readFileSync(path.resolve(import.meta.dirname, "../../../../../../../../content/themes/static/basic/css/theme.css"), "utf8");
-  const res = await fetch(`${baseUrl}/theme-assets/basic/css/theme.css`);
+  const onDisk = readFileSync(path.resolve(import.meta.dirname, "../../../../../../../../content/themes/static/tovu-theme/css/theme.css"), "utf8");
+  const res = await fetch(`${baseUrl}/theme-assets/tovu-theme/css/theme.css`);
   assert.equal(res.status, 200);
   assert.equal(await res.text(), onDisk);
 });
@@ -279,7 +304,7 @@ test("createApp(): the real 'basic' theme's Geist fonts are CORS-loadable (`*`, 
   const baseUrl = `http://127.0.0.1:${address.port}`;
 
   for (const file of ["geist-var.woff2", "geist-mono-var.woff2"]) {
-    const res = await fetch(`${baseUrl}/theme-assets/basic/assets/fonts/${file}`);
+    const res = await fetch(`${baseUrl}/theme-assets/tovu-theme/assets/fonts/${file}`);
     assert.equal(res.status, 200, `${file} should serve`);
     assert.equal(res.headers.get("content-type"), "font/woff2");
     assert.equal(res.headers.get("access-control-allow-origin"), "*", `${file} must be CORS-loadable`);
@@ -321,7 +346,7 @@ test("createApp(): all 4 static themes' real screenshot files still serve byte-f
   // One entry per theme under content/themes/static/ as of this change; each theme ships exactly one of
   // the two extensions (see Themes.tsx's own jpg-then-png fallback doc for why both exist).
   const staticThemeScreenshots: Array<{ id: string; file: string }> = [
-    { id: "basic", file: "index.png" },
+    { id: "tovu-theme", file: "index.png" },
     { id: "tailark-dusk", file: "index.png" },
     { id: "tailark-quartz-dark", file: "index.jpg" },
     { id: "tailark-quartz-libre", file: "index.png" },
