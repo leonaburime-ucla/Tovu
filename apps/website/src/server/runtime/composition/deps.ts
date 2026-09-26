@@ -25,6 +25,7 @@ import { SqlitePublishContentRunRepo } from "#src/platform/db/sqlite/publish-con
 import { SqlitePublishTrustRevocationStore } from "#src/platform/db/sqlite/publish-trust-revocations.sqlite";
 import { createPublishContentApplyPort, toPublishContentApplyDeps } from "#src/features/publish-content/apply-loop";
 import { createFileBlobIndex } from "#src/features/publish-content/file-blob-index";
+import { buildContentPublishPorts } from "#src/features/publish-content/content-ports";
 import { createSqlitePublishContentSeedHash } from "./publish-content-seed-hash.js";
 import { SqliteCustomCredentialSetRepo } from "#src/platform/db/sqlite/custom-credential-repo.sqlite";
 import { createDefaultHttpClient } from "#src/platform/http/client";
@@ -1693,6 +1694,7 @@ export function createSqliteRouteDeps(
         media: { repo: mediaRepo, assetBlobRepo, blobStore },
         redirect: redirectsWriteDeps,
         menu: { repo: menuRepo, bindingRepo: navLocationBindingRepo },
+        ...buildContentPublishPorts({ formDefinitionRepo }),
         "theme-files": {
           // S19 (S-F4) — the theme-files handler's `apply()` stages/writes under this site's own
           // themes root, the SAME value `routeDeps.themesDir` (below) resolves to. See

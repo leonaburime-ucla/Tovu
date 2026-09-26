@@ -8,6 +8,8 @@ import { SqliteMenuRepo } from "#src/features/navigation/repo.sqlite";
 import { SqlitePostRepo } from "#src/features/post/index";
 import { createPublishContentSeedHash, type PublishContentSeedHashFn } from "#src/features/publish-content/seed-hash";
 import { SqliteRedirectRepo, type RedirectsWriteDeps } from "#src/features/redirects/index";
+import { buildContentPublishPorts } from "#src/features/publish-content/content-ports";
+import { SqliteFormDefinitionRepo } from "#src/features/forms/repo.sqlite";
 import { openContentDb } from "#src/platform/db/sqlite/content-db";
 import { SqliteMediaRepo } from "#src/platform/db/sqlite/media-repo.sqlite";
 
@@ -89,6 +91,7 @@ export function createSqlitePublishContentSeedHash(input: CreateSqlitePublishCon
           },
           menu: { repo: new SqliteMenuRepo(seedDb), bindingRepo: unusedBySeedInspect("menu.bindingRepo") },
           redirect: { ...input.redirectsWriteDeps, repo: redirectRepo, db: redirectRepo },
+          ...buildContentPublishPorts({ formDefinitionRepo: new SqliteFormDefinitionRepo(seedDb) }),
         },
       };
     },

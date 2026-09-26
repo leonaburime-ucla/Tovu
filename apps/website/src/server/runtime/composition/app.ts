@@ -38,6 +38,7 @@ import { openContentDb, type ContentDb } from "#src/platform/db/sqlite/content-d
 import { InMemoryDeploymentsReadRepo } from "#src/features/deployments/index";
 import { InMemoryPublishContentBundleRepo } from "#src/features/publish-content/bundle-staging";
 import { createFileBlobIndex } from "#src/features/publish-content/file-blob-index";
+import { buildContentPublishPorts } from "#src/features/publish-content/content-ports";
 import { InMemoryPublishContentPeerRepo } from "#src/features/publish-content/peers";
 import { InMemoryPublishContentBaselineRepo } from "#src/features/publish-content/baseline-repo";
 import { InMemoryPublishContentRunRepo } from "#src/features/publish-content/run-repo";
@@ -895,6 +896,7 @@ export function createRouteDeps(options: CreateRouteDepsOptions = {}): Newslette
         media: { repo: mediaRepo, assetBlobRepo, blobStore },
         redirect: redirectsWriteDeps,
         menu: { repo: menuRepo, bindingRepo: navLocationBindingRepo },
+        ...buildContentPublishPorts({ formDefinitionRepo }),
         "theme-files": {
           // S19 (S-F4) — same value `routeDeps.themesDir` (below) resolves to. See
           // `routes/types.ts`'s `themesDir` doc and `deps.ts`'s identical addition to this same

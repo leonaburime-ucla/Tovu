@@ -1,5 +1,6 @@
 import type { Express } from "express";
 
+import { buildContentPublishPorts, type ContentPublishSources } from "#src/features/publish-content/content-ports";
 import type { PublishContentDeps } from "#src/features/publish-content/type-registry";
 import type { RouteDeps } from "#src/server/routes/types";
 
@@ -79,6 +80,7 @@ export type PublishContentRouteDeps = Pick<
   | "navLocationBindingRepo"
   | "themesDir"
   | "fileBlobIndex"
+  | keyof ContentPublishSources
 >;
 
 export type PublishContentRouteRegistrar = (app: Express, deps: PublishContentRouteDeps) => void;
@@ -123,6 +125,7 @@ export function toPublishContentDeps(deps: PublishContentRouteDeps): PublishCont
       redirect: deps.redirectsWriteDeps,
       menu: { repo: deps.menuRepo, bindingRepo: deps.navLocationBindingRepo },
       "theme-files": { themesDir: deps.themesDir, fileBlobIndex: deps.fileBlobIndex },
+      ...buildContentPublishPorts(deps),
     },
   };
 }

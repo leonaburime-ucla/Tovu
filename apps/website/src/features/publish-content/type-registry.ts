@@ -2,6 +2,7 @@ import type { BeforeSaveHookPort, ForgetRemovedPostFn, PostRepoPort, RemovePostF
 import type { AssetBlobRepoPort, BlobStorePort, VersionedMediaRepoPort } from "#src/features/media/index";
 import type { MenuRepoPort, NavLocationBindingRepoPort } from "#src/features/navigation/index";
 import type { RedirectsWriteDeps } from "#src/features/redirects/redirects";
+import type { FormDefinitionRepoPort } from "#src/features/forms/index";
 import type { FileBlobIndexPort } from "./file-blob-index.js";
 import type { AuthorizeFn, ChangeSetRepoPort, ClockPort, OutboxPort } from "@jini-ai/cms/core";
 
@@ -118,6 +119,9 @@ export interface PublishContentPorts {
      *  process (never rebuilt per request); see that module's own header. */
     readonly fileBlobIndex?: FileBlobIndexPort;
   };
+  // Factory-built types (`repo-handler.ts`) below — every root builds these through ONE function,
+  // `content-ports.ts`'s `buildContentPublishPorts`, so a new line here is one edit there.
+  readonly form: { readonly repo: FormDefinitionRepoPort };
 }
 
 /**
