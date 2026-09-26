@@ -7,11 +7,13 @@ import { InMemoryKeyring } from "#src/features/webhooks/keyring.memory";
 import { AesGcmSecretSealer } from "#src/features/webhooks/secret-sealer.aesgcm";
 import { InMemoryPublishContentPeerRepo } from "#src/features/publish-content/peers";
 import { CONTENT_HASH_VERSION } from "#src/features/publish-content/content-hash";
+import { collectBodyReferences } from "#src/features/publish-content/content-references";
 import {
   registerPublishContentContributor,
   resetPublishContentContributorsForTests,
   type PackedEntity,
   type PublishContentContributor,
+  type PublishContentHandler,
 } from "#src/features/publish-content/type-registry";
 import type { HttpClientPort } from "#src/platform/http/index";
 import { startTestServer } from "#src/server/__tests__/helpers/http-test-server";
@@ -367,7 +369,12 @@ function registerPagesWithMedia(): void {
     ...entity(entityType, id),
     state,
   });
-  const fixture = (entityType: string, dependsOn: string[], rows: PackedEntity[]): PublishContentContributor => ({
+  const fixture = (
+    entityType: string,
+    dependsOn: string[],
+    rows: PackedEntity[],
+    references?: PublishContentHandler["references"]
+  ): PublishContentContributor => ({
     entityType,
     dependsOn,
     build: () => ({
@@ -375,6 +382,7 @@ function registerPagesWithMedia(): void {
       schemaVersion: 1,
       permission: "publish_content.read",
       dependsOn,
+      ...(references ? { references } : {}),
       async *pack() {
         for (const e of rows) yield e;
       },
@@ -399,7 +407,7 @@ function registerPagesWithMedia(): void {
         bodyHtml: null,
       }),
       withState("page", "p2", { bodyJson: null, bodyHtml: `<img src="/m/same-shot/original">` }),
-    ])
+    ], (e) => collectBodyReferences(e.state))
   );
 }
 

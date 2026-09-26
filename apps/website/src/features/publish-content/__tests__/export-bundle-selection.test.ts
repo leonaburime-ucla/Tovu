@@ -5,10 +5,12 @@ import { CONTENT_HASH_VERSION } from "../content-hash.js";
 import { PUBLISH_CONTENT_ARTIFACT_FORMAT_VERSION } from "../artifact-format.js";
 import {
   applyPublishScope,
-  includeReferencedMedia,
+  includeReferencedEntities,
   selectBundleEntities,
   type PublishContentExportEnvelope,
+  type ReferenceHandlers,
 } from "../export-bundle.js";
+import { collectBodyReferences } from "../content-references.js";
 import { entityKey } from "../planner.js";
 import type { PackedEntity } from "../type-registry.js";
 
@@ -174,14 +176,20 @@ test("applyPublishScope carries envelope metadata through untouched and never mu
 });
 
 /**
- * @file `includeReferencedMedia` — owner decision 2026-09-25: a scoped "Publish pages"/"Publish
- * posts" (or per-item) run carries along the media its in-scope pages/posts actually reference, and
- * nothing else. Matched by media id OR slug (a `/m/{slug}/…` URL), never adding a media row the
- * narrowed bundle already holds, and never touching anything that is not referenced.
+ * @file `includeReferencedEntities` — owner decision 2026-09-25 ("images go along with pages and
+ * posts"), generalized by plan G3: a scoped run carries along what its in-scope rows use, and nothing
+ * else. Matched by id OR slug (a `/m/{slug}/…` URL), never adding a row the narrowed bundle already
+ * holds, and following carried rows' own references.
  */
 function stated(entityType: string, id: string, state: Record<string, unknown>, requiredBlobs: readonly string[] = []): PackedEntity {
   return { ...entity({ entityType, id, requiredBlobs }), state };
 }
+
+const bodyReferences = { references: (e: PackedEntity) => collectBodyReferences(e.state) };
+const REF_HANDLERS: ReferenceHandlers = new Map([
+  ["page", bodyReferences],
+  ["post", bodyReferences],
+]);
 
 const REF_SOURCE: PublishContentExportEnvelope = {
   ...ENVELOPE,
@@ -196,9 +204,9 @@ const REF_SOURCE: PublishContentExportEnvelope = {
   blobManifest: ["sha-a", "sha-b", "sha-c"],
 };
 
-test("includeReferencedMedia adds exactly the media the kept pages reference, by id or slug", () => {
+test("includeReferencedEntities adds exactly the media the kept pages reference, by id or slug", () => {
   const scoped = applyPublishScope(REF_SOURCE, { entityTypes: ["page"] });
-  const { envelope, includedFor } = includeReferencedMedia(scoped, REF_SOURCE);
+  const { envelope, includedFor } = includeReferencedEntities(scoped, REF_SOURCE, REF_HANDLERS);
 
   assert.deepEqual(
     envelope.entities.map((e) => entityKey(e.entityType, e.id)).sort(),
@@ -208,27 +216,83 @@ test("includeReferencedMedia adds exactly the media the kept pages reference, by
   assert.deepEqual(Object.fromEntries(includedFor), { "media:m1": ["page:pg1", "page:pg2"], "media:m2": ["page:pg2"] });
 });
 
-test("includeReferencedMedia follows the operator's row selection — a deselected page brings nothing", () => {
+test("includeReferencedEntities follows the operator's row selection — a deselected page brings nothing", () => {
   const scoped = applyPublishScope(REF_SOURCE, { entityTypes: ["page"] });
   const selected = selectBundleEntities(scoped, new Set([entityKey("page", "pg1")]));
-  const { envelope, includedFor } = includeReferencedMedia(selected, REF_SOURCE);
+  const { envelope, includedFor } = includeReferencedEntities(selected, REF_SOURCE, REF_HANDLERS);
 
   assert.deepEqual(envelope.entities.map((e) => entityKey(e.entityType, e.id)).sort(), ["media:m1", "page:pg1"]);
   assert.deepEqual(Object.fromEntries(includedFor), { "media:m1": ["page:pg1"] });
 });
 
-test("includeReferencedMedia never reads references off a type that is not a page or post", () => {
+test("includeReferencedEntities never reads references off a type whose handler has no references()", () => {
   const scoped = applyPublishScope(REF_SOURCE, { entityTypes: ["redirect"] });
-  const { envelope, includedFor } = includeReferencedMedia(scoped, REF_SOURCE);
+  const { envelope, includedFor } = includeReferencedEntities(scoped, REF_SOURCE, REF_HANDLERS);
 
   assert.deepEqual(envelope.entities.map((e) => e.id), ["r1"]);
   assert.equal(includedFor.size, 0);
 });
 
-test("includeReferencedMedia leaves a media row the bundle already holds as an ordinary row", () => {
+test("includeReferencedEntities leaves a media row the bundle already holds as an ordinary row", () => {
   const scoped = applyPublishScope(REF_SOURCE, { entityTypes: ["page", "media"] });
-  const { envelope, includedFor } = includeReferencedMedia(scoped, REF_SOURCE);
+  const { envelope, includedFor } = includeReferencedEntities(scoped, REF_SOURCE, REF_HANDLERS);
 
   assert.equal(envelope.entities.length, scoped.entities.length, "nothing is added twice");
   assert.equal(includedFor.size, 0, "an in-scope media row is the operator's own choice, not an add-on");
+});
+
+// page → widget (by slug, from an html marker) → form, and a widget area → the same widget.
+const refsFrom = (field: string, entityType: string) => ({
+  references: (e: PackedEntity) => (typeof e.state[field] === "string" ? [{ entityType, key: e.state[field] as string }] : []),
+});
+const CHAIN_HANDLERS: ReferenceHandlers = new Map([
+  ["page", bodyReferences],
+  ["widget", refsFrom("formSlug", "form")],
+  ["widget-area", refsFrom("widgetId", "widget")],
+  ["term", refsFrom("parentId", "term")],
+]);
+const CHAIN_SOURCE: PublishContentExportEnvelope = {
+  ...ENVELOPE,
+  entities: [
+    stated("form", "contact", { slug: "contact" }),
+    stated("form", "other", { slug: "other" }),
+    stated("widget", "w1", { slug: "signup", formSlug: "contact" }),
+    stated("widget-area", "sidebar", { widgetId: "w1" }),
+    stated("page", "pg1", { bodyHtml: `<div data-embed-config='{"type":"widget","slug":"signup"}'></div>` }),
+    stated("term", "t1", { parentId: "t2" }),
+    stated("term", "t2", { parentId: "t3" }),
+    stated("term", "t3", { parentId: "t2" }),
+  ],
+  blobManifest: [],
+};
+
+test("includeReferencedEntities follows carried rows' own references, naming the in-scope roots for each", () => {
+  const scoped = applyPublishScope(CHAIN_SOURCE, { entityTypes: ["page", "widget-area"] });
+  const { envelope, includedFor } = includeReferencedEntities(scoped, CHAIN_SOURCE, CHAIN_HANDLERS);
+
+  assert.deepEqual(
+    envelope.entities.map((e) => entityKey(e.entityType, e.id)),
+    ["widget:w1", "form:contact", "widget-area:sidebar", "page:pg1"],
+    "carried rows come first, in the order they were reached"
+  );
+  assert.deepEqual(Object.fromEntries(includedFor), {
+    "widget:w1": ["page:pg1", "widget-area:sidebar"],
+    "form:contact": ["page:pg1", "widget-area:sidebar"],
+  });
+});
+
+test("includeReferencedEntities does not walk through a row the bundle already holds", () => {
+  const scoped = applyPublishScope(CHAIN_SOURCE, { entityTypes: ["widget", "widget-area"] });
+  const { envelope, includedFor } = includeReferencedEntities(scoped, CHAIN_SOURCE, CHAIN_HANDLERS);
+
+  assert.deepEqual(envelope.entities.map((e) => entityKey(e.entityType, e.id)), ["form:contact", "widget:w1", "widget-area:sidebar"]);
+  assert.deepEqual(Object.fromEntries(includedFor), { "form:contact": ["widget:w1"] }, "the form is the widget's, not the area's");
+});
+
+test("includeReferencedEntities stops on a reference cycle instead of looping", () => {
+  const scoped = selectBundleEntities(CHAIN_SOURCE, new Set([entityKey("term", "t1")]));
+  const { envelope, includedFor } = includeReferencedEntities(scoped, CHAIN_SOURCE, CHAIN_HANDLERS);
+
+  assert.deepEqual(envelope.entities.map((e) => entityKey(e.entityType, e.id)), ["term:t2", "term:t3", "term:t1"]);
+  assert.deepEqual(Object.fromEntries(includedFor), { "term:t2": ["term:t1"], "term:t3": ["term:t1"] });
 });

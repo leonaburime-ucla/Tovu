@@ -1465,7 +1465,7 @@ describe("PublishContentDialog — media carried along with pages", () => {
 
 /**
  * A carried-along media row live reports as a conflict is an ordinary skipped row (the server leaves
- * it untagged — `report-labels.ts`'s `keepChangingIncludedMedia`), so the operator sees its reason
+ * it untagged — `report-labels.ts`'s `keepChangingIncludedEntities`), so the operator sees its reason
  * and can tick "Overwrite on live". Once ticked, the re-plan answers it `forced` and tagged
  * `includedFor` again. Deselecting an unrelated page must not then silently drop that tick from the
  * narrowed confirm re-plan: the page that uses the media is still being published.

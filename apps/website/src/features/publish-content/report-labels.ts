@@ -105,16 +105,17 @@ export function appendSkippedRowsToPeerPlan(plan: PeerPlanEnvelope, skipped: rea
 const CHANGING_OUTCOMES: ReadonlySet<string> = new Set(["created", "applied", "forced"]);
 
 /**
- * Owner decision 2026-09-25 — the report half of "images go along with pages and posts"
- * (`export-bundle.ts`'s `includeReferencedMedia` is the bundle half). For a media row that was
- * carried along for in-scope pages/posts:
+ * Owner decision 2026-09-25 — the report half of "images go along with pages and posts", generalized
+ * by plan G3 (`export-bundle.ts`'s `includeReferencedEntities` is the bundle half). For a row that was
+ * carried along for in-scope rows (an image, an embedded widget, an entry's collection, ...):
  * - created, updated or forced: kept and tagged `includedFor` (the referrer keys), which the dialog
  *   renders as a pre-ticked, untickable row noting who uses it;
  * - unchanged: dropped — live already holds exactly this, so there is nothing to say;
  * - anything else (conflict, blocked): kept UNTAGGED, exactly as it arrived. Live would not take this
- *   media, so a page using it would publish pointing at an image live lacks or holds differently —
- *   it must show as an ordinary skipped row with its plain reason and, when `canOverwrite`, the
- *   "Overwrite on live" box, the same as any conflicting media row. Hiding it hid the problem.
+ *   row, so a page using it would publish pointing at an image (or widget, ...) live lacks or holds
+ *   differently — it must show as an ordinary skipped row with its plain reason and, when
+ *   `canOverwrite`, the "Overwrite on live" box, the same as any conflicting row. Hiding it hid the
+ *   problem.
  *
  * A row NOT carried along — including an ordinary media row — passes through exactly as it arrived.
  * Returns the envelope unchanged when it is not the expected shape (mirrors {@link labelPeerPlanRows})
@@ -122,7 +123,7 @@ const CHANGING_OUTCOMES: ReadonlySet<string> = new Set(["created", "applied", "f
  *
  * @complexity O(r) in the report's row count; O(r) space for the copied `rows` array.
  */
-export function keepChangingIncludedMedia(
+export function keepChangingIncludedEntities(
   plan: PeerPlanEnvelope,
   includedFor: ReadonlyMap<string, readonly string[]>
 ): PeerPlanEnvelope {

@@ -5,9 +5,10 @@ import { stageBundle } from "#src/features/publish-content/bundle-staging";
 import {
   applyPublishScope,
   buildExportBundle,
-  includeReferencedMedia,
+  includeReferencedEntities,
   selectBundleEntities,
 } from "#src/features/publish-content/export-bundle";
+import { buildPublishContentCatalog } from "#src/features/publish-content/type-registry";
 import type { PublishScope } from "#src/features/publish-content/ui/contract";
 import {
   confirmPeerImport,
@@ -20,7 +21,7 @@ import {
 import { createCompositePeerBlobSource } from "#src/features/publish-content/composite-blob-source";
 import {
   appendSkippedRowsToPeerPlan,
-  keepChangingIncludedMedia,
+  keepChangingIncludedEntities,
   labelPeerPlanRows,
 } from "#src/features/publish-content/report-labels";
 import { resolvePublishDestinationCredential } from "#src/features/publish-content/destination-credential";
@@ -285,11 +286,12 @@ export const registerPublishContentPeerTransportRoutes: PublishContentRouteRegis
 
       const peer = await openPeer(deps, String(req.params.peerId ?? ""));
       const workspace = await deps.workspaceRepo.findById(deps.workspaceId);
+      const publishContentDeps = toPublishContentDeps(deps);
       const fullBundle = await buildExportBundle({
         workspaceId: deps.workspaceId,
         principalId,
         authorize: deps.authorize,
-        publishContentDeps: toPublishContentDeps(deps),
+        publishContentDeps,
         sourceLabel: workspace?.name ?? deps.workspaceId,
       });
       // `scope` narrows first (`plan-publish-sections-2026-09-25.md` §1 — "Publish pages" never even
@@ -302,12 +304,15 @@ export const registerPublishContentPeerTransportRoutes: PublishContentRouteRegis
       // never uploaded, never planned and never applied, rather than being filtered out by some
       // later step that could forget. See `export-bundle.ts`'s `selectBundleEntities`.
       const selected = selectedEntityKeys === null ? scoped : selectBundleEntities(scoped, new Set(selectedEntityKeys));
-      // Owner decision 2026-09-25: a SCOPED run carries along the media its (still-selected) pages
-      // and posts reference, drawn from the full bundle — derived after the selection, so a
-      // deselected page brings nothing and a narrowed re-plan re-derives the same rule. An unscoped
-      // run already holds every media row as an ordinary one. See `includeReferencedMedia`.
+      // Owner decision 2026-09-25 (plan G3): a SCOPED run carries along what its (still-selected)
+      // rows use — a page's images and widgets, a widget's form, an entry's collection — drawn from
+      // the full bundle, derived after the selection, so a deselected page brings nothing and a
+      // narrowed re-plan re-derives the same rule. An unscoped run already holds every row as an
+      // ordinary one. See `includeReferencedEntities`.
       const { envelope: bundle, includedFor } =
-        scopeResult.scope === null ? { envelope: selected, includedFor: new Map<string, readonly string[]>() } : includeReferencedMedia(selected, fullBundle);
+        scopeResult.scope === null
+          ? { envelope: selected, includedFor: new Map<string, readonly string[]>() }
+          : includeReferencedEntities(selected, fullBundle, buildPublishContentCatalog(publishContentDeps).handlerByType);
 
       const result = await pushBundleToPeer(
         {
@@ -367,11 +372,11 @@ export const registerPublishContentPeerTransportRoutes: PublishContentRouteRegis
         // operator's row selection has nothing to say about whether it is still shown, but `scope`
         // itself still applies — a refused theme tree only belongs in a theme-files-scoped plan.
         //
-        // Last, a carried-along media row that live would write is tagged with the pages/posts that use
-        // it, an unchanged one is dropped, and a conflicting/blocked one stays as an ordinary row so the
-        // operator sees it — `report-labels.ts`'s `keepChangingIncludedMedia`.
+        // Last, a carried-along row that live would write is tagged with the rows that use it, an
+        // unchanged one is dropped, and a conflicting/blocked one stays as an ordinary row so the
+        // operator sees it — `report-labels.ts`'s `keepChangingIncludedEntities`.
         ...appendSkippedRowsToPeerPlan(
-          keepChangingIncludedMedia(labelPeerPlanRows(result.plan, bundle.entities), includedFor),
+          keepChangingIncludedEntities(labelPeerPlanRows(result.plan, bundle.entities), includedFor),
           scoped.skipped
         ),
       });

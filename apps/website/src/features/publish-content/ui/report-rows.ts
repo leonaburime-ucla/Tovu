@@ -434,13 +434,15 @@ function referencedByLabelsFor(row: PublishContentOutcomeRow): readonly string[]
 }
 
 /**
- * The note a carried-along media row shows, named by the types of the pages/posts that use it.
+ * The note a carried-along row shows, named by the types of the rows that use it: pages and/or
+ * posts by name, any other mix (a widget region, an entry, ...) generically.
  *
  * @complexity O(k) in the referrer count.
  */
 function usedByNoteFor(includedFor: readonly string[]): string | null {
   if (includedFor.length === 0) return null;
   const types = new Set(includedFor.map((key) => key.slice(0, key.indexOf(":"))));
+  if ([...types].some((type) => type !== "page" && type !== "post")) return "Used by items you're publishing";
   if (types.has("page") && types.has("post")) return "Used by these pages and posts";
   return types.has("post") ? "Used by these posts" : "Used by these pages";
 }

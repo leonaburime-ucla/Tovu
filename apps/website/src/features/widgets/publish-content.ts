@@ -1,3 +1,4 @@
+import { collectPlacementReferences } from "#src/features/publish-content/content-references";
 import { createRepoPublishHandler, gatewayDeps, type RepoWriteContext } from "#src/features/publish-content/repo-handler";
 import type { PublishContentContributor, WidgetPublishPorts } from "#src/features/publish-content/type-registry";
 
@@ -69,6 +70,10 @@ function toWidgetRow(entry: EntryRecord & { deletedAt?: string | null }): Widget
 
 const FORM_REF = "formDefinitionId";
 
+/** The ref-typed config fields (`registry.ts`'s `x-ref-target`) and the publish type each names: a
+ *  form by slug (packed through {@link swapFormRef}), a menu and a term by id. */
+const WIDGET_CONFIG_REFERENCES: Readonly<Record<string, string>> = { [FORM_REF]: "form", menuRef: "menu", categoryTermId: "term" };
+
 /** Swaps a `contact-form` widget's form reference through `swap` (id to slug on pack, slug to id on
  *  write). A reference `swap` cannot resolve stays as it is, so a dangling one stays dangling on
  *  both sides and still hashes alike. */
@@ -119,6 +124,13 @@ export const contributeWidgetPublish = (): PublishContentContributor =>
         const row = await p.entries.findAnyBySlug({ workspaceId, type: WIDGET_CONTENT_TYPE, slug });
         return row ? toWidgetRow(row) : null;
       },
+    },
+    references: (entity) => {
+      const config = (entity.state.config ?? {}) as Record<string, unknown>;
+      return Object.entries(WIDGET_CONFIG_REFERENCES).flatMap(([field, entityType]) => {
+        const key = config[field];
+        return typeof key === "string" && key.length > 0 ? [{ entityType, key }] : [];
+      });
     },
     validate: async ({ entity }) => {
       const widgetType = entity.state.widgetType as WidgetTypeKey;
@@ -187,6 +199,7 @@ export const contributeWidgetAreaPublish = (): PublishContentContributor =>
       areaEntryId: "local",
       version: "local",
     },
+    references: (entity) => collectPlacementReferences(entity.state),
     write: async (ctx) => {
       const { state, existing, expectedVersion, principalId, workspaceId } = ctx;
       const deps = serviceDeps(ctx, "widget-area");

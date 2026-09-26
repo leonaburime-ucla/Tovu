@@ -92,6 +92,11 @@ export const contributeTermPublish = (): PublishContentContributor =>
     isTrashed: (row) => row.status === TRASH,
     packOrder: parentFirst,
     fields: { taxonomyId: "transferred", parentId: "transferred", name: "transferred", id: "local", status: "local", updatedAt: "local", version: "local" },
+    // Its taxonomy and its parent: a scoped publish of a term brings both.
+    references: ({ state }) => [
+      { entityType: "taxonomy", key: String(state.taxonomyId) },
+      ...(typeof state.parentId === "string" ? [{ entityType: "term", key: state.parentId }] : []),
+    ],
     // A name is taken only among its siblings (same taxonomy, same parent).
     address: {
       field: "name",

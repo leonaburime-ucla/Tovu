@@ -1,6 +1,7 @@
 import { executeCommand } from "@jini-ai/cms/core";
 
 import { contentHash, CONTENT_HASH_VERSION } from "#src/features/publish-content/content-hash";
+import { collectBodyReferences } from "#src/features/publish-content/content-references";
 import type {
   PublishContentContributor,
   PublishContentDeps,
@@ -569,6 +570,7 @@ function buildHandler(deps: PublishContentDeps, kind: PostKind): PublishContentH
     apply,
     planRetire,
     retire,
+    references: (entity) => collectBodyReferences(entity.state),
   };
 }
 

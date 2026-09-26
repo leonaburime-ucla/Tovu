@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { CONTENT_HASH_VERSION } from "../content-hash.js";
-import { appendSkippedRowsToPeerPlan, keepChangingIncludedMedia, labelPeerPlanRows } from "../report-labels.js";
+import { appendSkippedRowsToPeerPlan, keepChangingIncludedEntities, labelPeerPlanRows } from "../report-labels.js";
 import type { PackedEntity, SkippedPackEntity } from "../type-registry.js";
 
 /**
@@ -159,7 +159,7 @@ test("appendSkippedRowsToPeerPlan adds nothing to a refused report", () => {
 });
 
 /**
- * `keepChangingIncludedMedia` — owner decision 2026-09-25: media carried along with a scoped
+ * `keepChangingIncludedEntities` — owner decision 2026-09-25: media carried along with a scoped
  * pages/posts run shows ONLY when live would actually change (created or updated). Every other
  * outcome for such a row is dropped from the report; every row that was not carried along is left
  * exactly as it arrived.
@@ -168,7 +168,7 @@ function mediaRow(id: string, outcome: string, writes: boolean): Record<string, 
   return { entityType: "media", entityId: id, outcome, writes, reason: null };
 }
 
-test("keepChangingIncludedMedia tags created/updated/overwritten carried-along media with who uses it, and drops unchanged", () => {
+test("keepChangingIncludedEntities tags created/updated/overwritten carried-along media with who uses it, and drops unchanged", () => {
   const plan = planWith([
     mediaRow("m-new", "created", true),
     mediaRow("m-upd", "applied", true),
@@ -183,7 +183,7 @@ test("keepChangingIncludedMedia tags created/updated/overwritten carried-along m
     ["media:m-same", ["page:pg1"]],
   ]);
 
-  const rows = rowsOf(keepChangingIncludedMedia(plan, includedFor));
+  const rows = rowsOf(keepChangingIncludedEntities(plan, includedFor));
 
   assert.deepEqual(
     rows.map((row) => [row.entityId, row.includedFor ?? null]),
@@ -202,7 +202,7 @@ test("keepChangingIncludedMedia tags created/updated/overwritten carried-along m
  * — untagged, reason and `canOverwrite` intact — exactly like any conflicting media row, so the
  * dialog gives it the plain reason and the "Overwrite on live" box.
  */
-test("keepChangingIncludedMedia keeps a conflicting or blocked carried-along media row as an ordinary row", () => {
+test("keepChangingIncludedEntities keeps a conflicting or blocked carried-along media row as an ordinary row", () => {
   const conflict = { ...mediaRow("m-conf", "conflict", false), reason: "Edited on live", canOverwrite: true };
   const blocked = { ...mediaRow("m-block", "blocked", false), reason: "Slug taken", canOverwrite: false };
   const plan = planWith([conflict, blocked]);
@@ -211,18 +211,18 @@ test("keepChangingIncludedMedia keeps a conflicting or blocked carried-along med
     ["media:m-block", ["post:po1"]],
   ]);
 
-  const rows = rowsOf(keepChangingIncludedMedia(plan, includedFor));
+  const rows = rowsOf(keepChangingIncludedEntities(plan, includedFor));
 
   assert.deepEqual(rows, [conflict, blocked]);
 });
 
-test("keepChangingIncludedMedia leaves an ordinary media row alone whatever its outcome", () => {
+test("keepChangingIncludedEntities leaves an ordinary media row alone whatever its outcome", () => {
   const plan = planWith([mediaRow("m-own", "unchanged", false)]);
-  const rows = rowsOf(keepChangingIncludedMedia(plan, new Map()));
+  const rows = rowsOf(keepChangingIncludedEntities(plan, new Map()));
   assert.deepEqual(rows, [mediaRow("m-own", "unchanged", false)]);
 });
 
-test("keepChangingIncludedMedia passes an envelope it does not recognize straight through", () => {
+test("keepChangingIncludedEntities passes an envelope it does not recognize straight through", () => {
   const odd = { planId: "x", details: "not a report" };
-  assert.equal(keepChangingIncludedMedia(odd, new Map([["media:m1", ["page:p"]]])), odd);
+  assert.equal(keepChangingIncludedEntities(odd, new Map([["media:m1", ["page:p"]]])), odd);
 });

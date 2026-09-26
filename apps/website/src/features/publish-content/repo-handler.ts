@@ -4,7 +4,7 @@ import type { JsonObject } from "@jini-ai/cms/core";
 import { PublishContentApplyRowError } from "./apply-errors.js";
 import { contentHash, CONTENT_HASH_VERSION } from "./content-hash.js";
 import { addressHeldByOther, addressHeldInTrash, changedSincePlan, notWired, trashedAtDestination } from "./precheck-reasons.js";
-import type { PackedEntity, PublishContentContributor, PublishContentDeps, PublishContentHandler } from "./type-registry.js";
+import type { PackedEntity, PublishContentContributor, PublishContentDeps, PublishContentHandler, PublishContentReference } from "./type-registry.js";
 
 /**
  * @file Slice F1 of `ADS-memory/.local-artifacts/plan-publish-all-types-2026-09-25.md` (§2): the
@@ -87,6 +87,8 @@ export interface RepoPublishTypeConfig<Row, Ports> {
     readonly field: string;
     readonly holder: (ports: Ports, workspaceId: string, value: string, state: Record<string, unknown>) => Promise<Row | null>;
   };
+  /** What a packed entity uses, carried along by a scoped publish ({@link PublishContentHandler.references}). */
+  readonly references?: (entity: PackedEntity) => readonly PublishContentReference[];
   /** Type-specific refusals, after the generic ones. Returns a reason or `null`. */
   readonly validate?: (input: { ports: Ports; workspaceId: string; entity: PackedEntity; existing: Row | null }) => Promise<string | null>;
 
@@ -284,6 +286,7 @@ export function createRepoPublishHandler<Row, Ports>(config: RepoPublishTypeConf
       inspect,
       precheck,
       apply,
+      ...(config.references ? { references: config.references } : {}),
       ...config.extend?.({ deps, ports }),
     };
   }

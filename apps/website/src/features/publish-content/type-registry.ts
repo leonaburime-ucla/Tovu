@@ -423,6 +423,22 @@ export interface PublishContentHandler {
    * nothing that can be whole-unit-refused (most content types) simply omits this method.
    */
   listSkipped?(): Promise<readonly SkippedPackEntity[]>;
+
+  /**
+   * Plan G3 — export side, pure: the other publishable entities this packed one uses (a page's
+   * images and embedded widgets, a widget's form or menu, an entry's collection, a term's taxonomy).
+   * A scoped publish carries them along (`export-bundle.ts`'s `includeReferencedEntities`), following
+   * the carried ones' own references in turn. Unlike `dependsOn`, a reference implies no apply order
+   * and the destination need not validate it. A type that uses nothing omits this method.
+   */
+  references?(entity: PackedEntity): readonly PublishContentReference[];
+}
+
+/** One entity a {@link PublishContentHandler.references} names: its type, and a key it answers to —
+ *  its packed `id`, or its `state.slug` (a page's html may embed a widget or an image by slug). */
+export interface PublishContentReference {
+  readonly entityType: string;
+  readonly key: string;
 }
 
 /**

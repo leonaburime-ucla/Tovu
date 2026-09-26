@@ -480,7 +480,7 @@ test("toPublishReportRows rewrites a skipped row's reason for a non-technical ow
 
 /**
  * Owner decision 2026-09-25 — media carried along with a scoped pages/posts run
- * (`report-labels.ts`'s `keepChangingIncludedMedia` sets `includedFor`). Pre-ticked and untickable:
+ * (`report-labels.ts`'s `keepChangingIncludedEntities` sets `includedFor`). Pre-ticked and untickable:
  * never selectable, but counted as publishing whenever a page/post that uses it is still ticked.
  */
 test("a carried-along media row is untickable and notes the pages that use it", () => {
@@ -507,6 +507,22 @@ test("the carried-along note names posts, or both, by the referrers' own types",
   );
   assert.deepEqual(rows[2]?.includedFor, [], "an ordinary row carries no referrers");
   assert.equal(rows[2]?.selectable, true);
+});
+
+test("a row carried along for anything but pages and posts gets the generic note, and stays untickable", () => {
+  const rows = toPublishReportRows(
+    report([
+      row({ outcome: "created", entityType: "widget", entityId: "w1", includedFor: ["widget-area:sidebar"] }),
+      row({ outcome: "applied", entityType: "form", entityId: "contact", includedFor: ["page:pg1", "widget-area:sidebar"] }),
+    ])
+  );
+  assert.deepEqual(
+    rows.map((r) => r.usedByNote),
+    ["Used by items you're publishing", "Used by items you're publishing"]
+  );
+  assert.deepEqual(rows.map((r) => r.selectable), [false, false]);
+  assert.equal(countSelectedPublishing(rows, new Set(["widget-area:sidebar"])), 2, "counted while the region that uses them is ticked");
+  assert.equal(countSelectedPublishing(rows, new Set()), 0);
 });
 
 test("a carried-along row counts toward the button only while a page that uses it is ticked", () => {

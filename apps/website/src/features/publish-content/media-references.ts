@@ -3,7 +3,7 @@ import { embedMarkerTarget, scanEmbedMarkers } from "#src/contracts/core/embeds/
 /**
  * @file Which media a packed post/page state points at — owner decision 2026-09-25, "images go along
  * with pages and posts": a scoped "Publish pages"/"Publish posts" run carries the media its in-scope
- * items reference (`export-bundle.ts`'s `includeReferencedMedia`).
+ * items reference (`export-bundle.ts`'s `includeReferencedEntities`, through `content-references.ts`).
  *
  * Reads the packed WIRE state (`features/post/publish-content.ts`'s `toPublishableState`), not a
  * `PostRecord`, because the scope layer only ever holds packed entities. Every reference shape the
@@ -20,9 +20,9 @@ import { embedMarkerTarget, scanEmbedMarkers } from "#src/contracts/core/embeds/
  * - `seoExtJson.ogImage`/`twitterImage`, a `"{assetId}:{transformName}"` ref or an absolute URL
  *   (`seo/types.ts`).
  *
- * Not covered, because none of it is published by this feature at all: media a `widgetEmbed` node's
- * widget entry holds (widgets are not a publish-content type), and an old slug kept alive only by
- * `media_slug_history` (matched against the CURRENT slug only).
+ * Not covered: an old slug kept alive only by `media_slug_history` (matched against the CURRENT slug
+ * only). Media an embedded widget holds is not read here: the widget itself is carried
+ * (`content-references.ts`), and a widget's config names no media the carry follows.
  *
  * Returns KEYS — an id or a slug — never resolved media: the caller matches them against the media
  * entities it actually holds, so a key naming nothing (a deleted asset, a stray URL) adds nothing.

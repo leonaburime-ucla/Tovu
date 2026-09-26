@@ -1,3 +1,4 @@
+import { collectBodyReferences } from "#src/features/publish-content/content-references";
 import { tombstonedAtDestination } from "#src/features/publish-content/precheck-reasons";
 import { createRepoPublishHandler, gatewayDeps, okOrThrow } from "#src/features/publish-content/repo-handler";
 import type { EntryPublishPorts, PublishContentContributor } from "#src/features/publish-content/type-registry";
@@ -59,6 +60,8 @@ export const contributeCollectionEntryPublish = (): PublishContentContributor =>
     },
     // A tombstone is terminal, so nothing in the bundle can fix it. A missing type is left to apply:
     // the same bundle may carry it.
+    // Its collection, plus whatever its body embeds and its categories/tags.
+    references: (entity) => [{ entityType: "content-type", key: String(entity.state.type) }, ...collectBodyReferences(entity.state)],
     validate: async ({ ports, workspaceId, entity }) => {
       const owner = await ports.contentTypes.findByKey({ workspaceId, key: entity.state.type as string });
       return owner?.status === "tombstone" ? tombstonedAtDestination("content-type", owner.key) : null;
