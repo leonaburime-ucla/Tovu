@@ -11,6 +11,7 @@ import { SqliteRedirectRepo, type RedirectsWriteDeps } from "#src/features/redir
 import { buildContentPublishPorts } from "#src/features/publish-content/content-ports";
 import { SqliteFormDefinitionRepo } from "#src/features/forms/repo.sqlite";
 import { SqliteContentTypeRepo } from "#src/features/content-types/repo.sqlite";
+import { SqliteEntryRepo } from "#src/features/entries/repo.sqlite";
 import { SqliteTaxonomyRepo, SqliteTermRepo } from "#src/features/taxonomy/repo.sqlite";
 import { openContentDb } from "#src/platform/db/sqlite/content-db";
 import { SqliteMediaRepo } from "#src/platform/db/sqlite/media-repo.sqlite";
@@ -106,6 +107,7 @@ export function createSqlitePublishContentSeedHash(input: CreateSqlitePublishCon
             entryTermRepo: unusedBySeedInspect("entryTermRepo"),
             taxonomyRevisionRepo: unusedBySeedInspect("taxonomyRevisionRepo"),
             stampWatermark: () => unusedBySeedInspect<{ call: never }>("stampWatermark").call,
+            entryRepo: new SqliteEntryRepo(seedDb),
           }),
         },
       };

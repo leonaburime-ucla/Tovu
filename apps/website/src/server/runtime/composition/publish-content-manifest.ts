@@ -1,4 +1,5 @@
 import { contributeContentTypePublish } from "#src/features/content-types/publish-content";
+import { contributeCollectionEntryPublish } from "#src/features/entries/publish-content";
 import { contributeFormPublish } from "#src/features/forms/publish-content";
 import { contributeMediaPublish } from "#src/features/media/publish-content";
 import { contributeMenusPublish } from "#src/features/navigation/publish-content";
@@ -54,4 +55,5 @@ export function installFirstPartyPublishContentTypes(): void {
   registerPublishContentContributor(contributeContentTypePublish());
   registerPublishContentContributor(contributeTaxonomyPublish());
   registerPublishContentContributor(contributeTermPublish());
+  registerPublishContentContributor(contributeCollectionEntryPublish());
 }

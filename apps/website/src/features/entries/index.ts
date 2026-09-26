@@ -66,7 +66,7 @@ export type {
   UpdateEntryRequired,
   PublishUnpublishEntryRequired,
 } from "@jini-ai/cms/entries";
-export { createEntry, updateEntry, publishEntry, unpublishEntry } from "@jini-ai/cms/entries";
+export { createEntry, updateEntry, publishEntry, unpublishEntry, importEntry } from "@jini-ai/cms/entries";
 
 export { InMemoryEntryRepo, toEntryOutbox } from "@jini-ai/cms/entries";
 

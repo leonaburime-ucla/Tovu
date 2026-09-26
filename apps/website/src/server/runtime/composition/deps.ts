@@ -1711,6 +1711,7 @@ export function createSqliteRouteDeps(
           entryTermRepo: sqliteEntryTermRepo,
           taxonomyRevisionRepo,
           stampWatermark,
+          entryRepo,
         }),
         "theme-files": {
           // S19 (S-F4) — the theme-files handler's `apply()` stages/writes under this site's own

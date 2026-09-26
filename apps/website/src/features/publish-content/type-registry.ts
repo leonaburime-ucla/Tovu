@@ -16,6 +16,9 @@ import type {
   TermRepoPort,
 } from "#src/features/taxonomy/index";
 import type { TaxonomyPublishReadPort, TermPublishReadPort } from "#src/features/taxonomy/repo.sqlite";
+import type { EntryRepoPort } from "#src/features/entries/index";
+import type { EntryListExcludingTypesPort } from "#src/features/entries/public-list";
+import type { EntryPublishReadPort } from "#src/features/entries/repo.sqlite";
 import type { FileBlobIndexPort } from "./file-blob-index.js";
 import type { AuthorizeFn, ChangeSetRepoPort, ClockPort, OutboxPort } from "@jini-ai/cms/core";
 
@@ -138,6 +141,13 @@ export interface PublishContentPorts {
   readonly "content-type": { readonly repo: ContentTypeRepoPort & ContentTypeListPort; readonly indexProvisioner: IndexProvisionerPort };
   readonly taxonomy: TaxonomyPublishPorts;
   readonly term: TaxonomyPublishPorts;
+  readonly "collection-entry": EntryPublishPorts;
+}
+
+/** `collection-entry`'s bag: the entry repo (trash-inclusive read) and the owning-type lookup. */
+export interface EntryPublishPorts {
+  readonly entries: EntryRepoPort & EntryListExcludingTypesPort & EntryPublishReadPort;
+  readonly contentTypes: ContentTypeRepoPort;
 }
 
 /** `taxonomy` and `term` share one bag: the Jini taxonomy write-service deps, minus the gateway

@@ -106,7 +106,8 @@ import type { TeardownIndexProvisionerPort } from "../../features/content-types/
 import type { ContentTypeListPort } from "../../features/content-types/index.js";
 import type { EntryRepoPort } from "../../features/entries/index.js";
 import type { EntryListPort } from "../../features/entries/index.js";
-import type { EntryDisplayListPort } from "../../features/entries/public-list.js";
+import type { EntryDisplayListPort, EntryListExcludingTypesPort } from "../../features/entries/public-list.js";
+import type { EntryPublishReadPort } from "../../features/entries/repo.sqlite.js";
 import type {
   AssignmentCountEntryTermRepoPort,
   DeletableTaxonomyRepoPort,
@@ -552,8 +553,9 @@ export interface ContentTaxonomyDeps {
    * is a structural superset of `OwningContentType`). Widened again by collections plan C2 with
    * `EntryDisplayListPort` (`features/entries/public-list.ts`) — the `{"type":"collection"}`
    * marker's bounded published-entry read. No composition-root edit: `deps.ts`'s `SqliteEntryRepo`
-   * and `app.ts`'s `TrashAwareInMemoryEntryRepo` both implement it directly. */
-  entryRepo: EntryRepoPort & EntryListPort & EntryDisplayListPort;
+   * and `app.ts`'s `TrashAwareInMemoryEntryRepo` both implement it directly. Widened for
+   * publish-content (`collection-entry`) with the excluding-types list and the trash-inclusive read. */
+  entryRepo: EntryRepoPort & EntryListPort & EntryDisplayListPort & EntryListExcludingTypesPort & EntryPublishReadPort;
   /** ADR-044 — the `taxonomies`/`terms`/`entry_terms`/`taxonomy_revisions` write chokepoint repos,
    * `taxonomyRepo`/`termRepo` widened with this dispatch's new `TaxonomyListPort`/`TermListPort`
    * (`features/taxonomy/list.ts`). `mergeTerm`'s plan/confirm/execute ceremony is NOT wired this

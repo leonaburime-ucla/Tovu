@@ -2,7 +2,7 @@ import type { ContentTypeListPort, ContentTypeRepoPort, IndexProvisionerPort } f
 import type { FormDefinitionRepoPort } from "#src/features/forms/index";
 import type { PostRepoPort } from "#src/features/post/post";
 import { createPostBackedContentLookup } from "#src/features/taxonomy/index";
-import type { PublishContentPorts, TaxonomyPublishPorts } from "./type-registry.js";
+import type { EntryPublishPorts, PublishContentPorts, TaxonomyPublishPorts } from "./type-registry.js";
 
 /**
  * @file The one place the factory-built types (`repo-handler.ts`) get their ports from.
@@ -26,10 +26,11 @@ export interface ContentPublishSources {
   readonly entryTermRepo: TaxonomyPublishPorts["entryTerms"];
   readonly taxonomyRevisionRepo: TaxonomyPublishPorts["revisions"];
   readonly stampWatermark: () => void;
+  readonly entryRepo: EntryPublishPorts["entries"];
 }
 
 /** The ports keys this builder owns. */
-export type ContentPublishPortKey = "form" | "content-type" | "taxonomy" | "term";
+export type ContentPublishPortKey = "form" | "content-type" | "taxonomy" | "term" | "collection-entry";
 
 /** @complexity O(1) — a field projection, no I/O. */
 export function buildContentPublishPorts(sources: ContentPublishSources): Pick<PublishContentPorts, ContentPublishPortKey> {
@@ -46,5 +47,6 @@ export function buildContentPublishPorts(sources: ContentPublishSources): Pick<P
     term: taxonomy,
     form: { repo: sources.formDefinitionRepo },
     "content-type": { repo: sources.contentTypeRepo, indexProvisioner: sources.contentTypeIndexProvisioner },
+    "collection-entry": { entries: sources.entryRepo, contentTypes: sources.contentTypeRepo },
   };
 }

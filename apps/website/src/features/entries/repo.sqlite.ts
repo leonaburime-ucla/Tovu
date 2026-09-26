@@ -20,6 +20,7 @@ import type {
   EntryDisplayListPort,
   EntryListExcludingTypesPort,
 } from "./public-list.js";
+import type { TrashableEntryRecord } from "./trash-aware-memory-repo.js";
 
 /**
  * @file Real SQLite `EntryRepoPort` + `EntryListPort` adapter (ADR-006 rule-of-two "second
@@ -114,7 +115,14 @@ function sortByExpression(by: CollectionSortBy): AnyColumn | SQL {
   return sql`json_extract(${entries.fieldsJson}, ${siteFieldJsonPath(by.field)})`;
 }
 
-export class SqliteEntryRepo implements EntryRepoPort, EntryListPort, EntryDisplayListPort, EntryListExcludingTypesPort {
+/** Publish-content's entry read (`publish-content.ts`): the row plus its Trash marker, trashed rows
+ *  included, so a precheck refuses a trashed destination instead of planning a create that `save`
+ *  would then silently skip. */
+export interface EntryPublishReadPort {
+  findAnyById(params: { workspaceId: string; id: string }): Promise<TrashableEntryRecord | null>;
+}
+
+export class SqliteEntryRepo implements EntryRepoPort, EntryListPort, EntryDisplayListPort, EntryListExcludingTypesPort, EntryPublishReadPort {
   constructor(private readonly db: ContentDb) {}
 
   async findBySlug(params: { workspaceId: string; type: string; slug: string }): Promise<EntryRecord | null> {
@@ -128,6 +136,14 @@ export class SqliteEntryRepo implements EntryRepoPort, EntryListPort, EntryDispl
 
   async findById(params: { workspaceId: string; id: string }): Promise<EntryRecord | null> {
     return findOneBy(this.db, entries, [eq(entries.workspaceId, params.workspaceId), eq(entries.id, params.id), LIVE], toRecord);
+  }
+
+  /** Trash-blind: see {@link EntryPublishReadPort}. @complexity O(1). */
+  async findAnyById(params: { workspaceId: string; id: string }): Promise<TrashableEntryRecord | null> {
+    return findOneBy(this.db, entries, [eq(entries.workspaceId, params.workspaceId), eq(entries.id, params.id)], (row) => ({
+      ...toRecord(row),
+      deletedAt: row.deletedAt,
+    }));
   }
 
   /**

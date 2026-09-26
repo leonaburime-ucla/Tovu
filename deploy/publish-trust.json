@@ -19,7 +19,8 @@
       "form",
       "content-type",
       "taxonomy",
-      "term"
+      "term",
+      "collection-entry"
     ],
     "capabilities": [
       "publish_content.read",
