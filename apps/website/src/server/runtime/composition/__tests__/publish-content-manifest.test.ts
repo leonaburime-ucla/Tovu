@@ -45,11 +45,11 @@ test.beforeEach(() => {
   resetPublishContentContributorsForTests();
 });
 
-test("installFirstPartyPublishContentTypes registers exactly post, page, media, redirect, menu and theme-files", () => {
+test("installFirstPartyPublishContentTypes registers exactly the publishable types, in order", () => {
   installFirstPartyPublishContentTypes();
   assert.deepEqual(
     listPublishContentContributors().map((c) => c.entityType),
-    ["post", "page", "media", "redirect", "menu", "theme-files"]
+    ["post", "page", "media", "redirect", "menu", "theme-files", "form"]
   );
 });
 

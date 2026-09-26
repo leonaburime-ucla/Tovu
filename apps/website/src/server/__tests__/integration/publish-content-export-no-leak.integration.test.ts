@@ -5,6 +5,7 @@ import type { AddressInfo } from "node:net";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 
+import { listPublishContentContributors } from "#src/features/publish-content/type-registry";
 import { createApp } from "#src/server/runtime/composition/app";
 import { createSqliteRouteDeps } from "#src/server/runtime/composition/deps";
 import { openContentDb } from "#src/platform/db/sqlite/content-db";
@@ -331,8 +332,9 @@ test("GET .../publish-content/export never leaks a row from any sensitive table,
 
   const bundle = JSON.parse(raw) as { entities: Array<{ entityType: string }> };
   assert.ok(bundle.entities.length > 0, "the legitimate post must actually be present, or this test proves nothing");
+  const registered = listPublishContentContributors().map((c) => c.entityType);
   for (const entity of bundle.entities) {
-    assert.ok(["post", "page"].includes(entity.entityType), `an unregistered entityType reached the bundle: ${entity.entityType}`);
+    assert.ok(registered.includes(entity.entityType), `an unregistered entityType reached the bundle: ${entity.entityType}`);
   }
 
   // The exhaustive part: every named sensitive table's own canary, asserted absent one at a time so

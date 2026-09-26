@@ -110,6 +110,17 @@ export interface RepoPublishTypeConfig<Row, Ports> {
   >;
 }
 
+/** For a `write` that calls a domain service which runs its own `executeCommand` (no `undo`): the
+ *  gateway deps that service needs, or a loud error naming the missing ones. The apply bag
+ *  (`apply-loop.ts`'s `PublishContentApplyDeps`) always carries them. */
+export function gatewayDeps(deps: PublishContentDeps, entityType: string) {
+  const { clock, idGen, changeSets, authorize, outbox } = deps;
+  if (!changeSets || !authorize || !outbox) {
+    throw new Error(`publish-content: ${entityType}.apply() requires PublishContentDeps.changeSets/authorize/outbox — wire it from the apply-loop composition root (features/publish-content/apply-loop.ts).`);
+  }
+  return { clock, idGen, changeSets, authorize, outbox };
+}
+
 /** Builds a `PublishContentContributor` from a {@link RepoPublishTypeConfig}. */
 export function createRepoPublishHandler<Row, Ports>(config: RepoPublishTypeConfig<Row, Ports>): PublishContentContributor {
   const { entityType, permission } = config;

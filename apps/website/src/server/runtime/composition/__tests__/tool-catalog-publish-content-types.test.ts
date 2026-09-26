@@ -16,6 +16,7 @@ import {
   resetPublishContentContributorsForTests,
 } from "#src/features/publish-content/type-registry";
 
+import { installFirstPartyPublishContentTypes } from "../publish-content-manifest.js";
 import { installFirstPartyToolContributors } from "../tool-catalog-manifest.js";
 
 test.beforeEach(() => {
@@ -25,10 +26,10 @@ test.beforeEach(() => {
 
 test("installFirstPartyToolContributors also registers the publishable content types the publish tools read", () => {
   installFirstPartyToolContributors();
-  assert.deepEqual(
-    listPublishContentContributors().map((c) => c.entityType),
-    ["post", "page", "media"]
-  );
+  const viaTools = listPublishContentContributors().map((c) => c.entityType);
+  resetPublishContentContributorsForTests();
+  installFirstPartyPublishContentTypes();
+  assert.deepEqual(viaTools, listPublishContentContributors().map((c) => c.entityType));
 });
 
 test("a tool-hosting process booted only through installFirstPartyToolContributors is not told its site has nothing to publish", () => {

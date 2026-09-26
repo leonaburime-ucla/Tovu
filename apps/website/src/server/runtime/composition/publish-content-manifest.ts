@@ -1,3 +1,4 @@
+import { contributeFormPublish } from "#src/features/forms/publish-content";
 import { contributeMediaPublish } from "#src/features/media/publish-content";
 import { contributeMenusPublish } from "#src/features/navigation/publish-content";
 import { contributePagePublish, contributePostPublish } from "#src/features/post/publish-content";
@@ -47,4 +48,5 @@ export function installFirstPartyPublishContentTypes(): void {
   registerPublishContentContributor(contributeRedirectPublish());
   registerPublishContentContributor(contributeMenusPublish());
   registerPublishContentContributor(contributeThemeFilesPublish());
+  registerPublishContentContributor(contributeFormPublish());
 }

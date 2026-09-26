@@ -15,7 +15,8 @@
       "media",
       "redirect",
       "menu",
-      "theme-files"
+      "theme-files",
+      "form"
     ],
     "capabilities": [
       "publish_content.read",
