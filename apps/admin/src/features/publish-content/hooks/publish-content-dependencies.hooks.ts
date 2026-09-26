@@ -57,6 +57,9 @@ export interface FakePublishContentPortOptions {
    *  `true`, the honest floor for a fake that otherwise has no peer-capability concept at all; a test
    *  for the older-live case sets this to `false`. */
   liveCanOverwrite?: boolean;
+  /** What `planPublish` echoes as `notSupportedByLive` — the types an older live can't take yet.
+   *  Omitted from the result when not set, same as a live that took everything. */
+  notSupportedByLive?: PublishContentPlanResult["notSupportedByLive"];
 }
 
 /** The honest-floor default {@link FakePublishContentPortOptions.destination} — mirrors
@@ -185,6 +188,7 @@ export function createFakePublishContentPort(
         bundleId: `${options.bundleId ?? "fake-bundle"}${idSuffix}`,
         details: idSuffix === "" ? report : { ...report, rows },
         liveCanOverwrite,
+        ...(options.notSupportedByLive === undefined ? {} : { notSupportedByLive: options.notSupportedByLive }),
         ...(input.overwriteEntityKeys === undefined ? {} : { overwriteEntityKeys: input.overwriteEntityKeys }),
       };
     },

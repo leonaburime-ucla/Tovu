@@ -26,6 +26,7 @@ export type {
   PublishContentOutcomeKind,
   PublishContentOutcomeRow,
   PublishContentPeerSummary,
+  PublishContentNotSupportedByLive,
   PublishContentPlanResult,
   PublishContentReport,
   PublishScope,
@@ -55,6 +56,7 @@ export type { PublishSection, PublishSectionId } from "./sections.js";
 export {
   PUBLISH_SECTIONS,
   publishEntityTypeLabel,
+  publishEntityTypePluralLabel,
   publishSectionById,
   publishSectionForEntityTypes,
 } from "./sections.js";

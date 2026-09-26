@@ -32,6 +32,12 @@ export interface PublishContentPeerSummary {
   readonly hasCredential: boolean;
 }
 
+/** One type the live site can't take yet — see {@link PublishContentPlanResult.notSupportedByLive}. */
+export interface PublishContentNotSupportedByLive {
+  readonly entityType: string;
+  readonly count: number;
+}
+
 /**
  * `POST .../publish-content/peers/:peerId/push/plan` — the shared gated-mutation envelope
  * (`GatedPlanResult` in `apps/admin/src/lib/api.ts`) with this ceremony's own `details`, spread at
@@ -54,6 +60,13 @@ export interface PublishContentPlanResult {
    * "Overwrite on live" tick.
    */
   readonly liveCanOverwrite: boolean;
+  /**
+   * The types the live site's build can't take yet, with how many of each the bundle held back
+   * (`peer-transport.ts`'s `PushBundleResult.notSupportedByLive`, echoed by `push/plan`). Those rows
+   * never reach `details.rows`, so without this a forms-only publish to an older live reads as
+   * "Nothing to publish". Absent (or empty) when the live took every type.
+   */
+  readonly notSupportedByLive?: readonly PublishContentNotSupportedByLive[];
   /**
    * The `overwriteEntityKeys` this plan was built with, echoed back exactly as sent so a client can
    * carry the SAME set into `push/execute` (§3's admin/chat flow) rather than keeping its own

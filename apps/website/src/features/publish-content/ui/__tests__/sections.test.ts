@@ -15,6 +15,7 @@ import {
 import {
   PUBLISH_SECTIONS,
   publishEntityTypeLabel,
+  publishEntityTypePluralLabel,
   publishSectionById,
   publishSectionForEntityTypes,
 } from "../sections.js";
@@ -36,6 +37,7 @@ test("every registered publish-content contributor sits in exactly one section",
 test("section ids are unique and every section's entityTypes are exactly its typeLabelKeys", () => {
   assert.equal(new Set(PUBLISH_SECTIONS.map((s) => s.section)).size, PUBLISH_SECTIONS.length);
   for (const s of PUBLISH_SECTIONS) assert.deepEqual([...s.entityTypes], Object.keys(s.typeLabelKeys));
+  for (const s of PUBLISH_SECTIONS) assert.deepEqual(Object.keys(s.typePluralLabelKeys), Object.keys(s.typeLabelKeys));
 });
 
 test("the existing six sections still send exactly the one type they sent before", () => {
@@ -73,4 +75,14 @@ test("publishEntityTypeLabel names each type for an owner and falls back to the 
   assert.equal(publishEntityTypeLabel("collection-entry"), "Entry");
   assert.equal(publishEntityTypeLabel("widget-area"), "Widget region");
   assert.equal(publishEntityTypeLabel("something-new"), "something-new");
+});
+
+test("publishEntityTypePluralLabel names each type in the plural and falls back to the raw id", () => {
+  assert.equal(publishEntityTypePluralLabel("form"), "Forms");
+  assert.equal(publishEntityTypePluralLabel("theme-files"), "Themes");
+  assert.equal(publishEntityTypePluralLabel("collection-entry"), "Entries");
+  assert.equal(publishEntityTypePluralLabel("taxonomy"), "Taxonomies");
+  assert.equal(publishEntityTypePluralLabel("widget-area"), "Widget regions");
+  assert.equal(publishEntityTypePluralLabel("media"), "Media");
+  assert.equal(publishEntityTypePluralLabel("something-new"), "something-new");
 });

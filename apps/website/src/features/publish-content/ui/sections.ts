@@ -23,28 +23,52 @@ export interface PublishSection {
   readonly descriptionKey: string;
   /** Friendly name per entity type, shown in the dialog's type column. */
   readonly typeLabelKeys: Readonly<Record<string, string>>;
+  /** The same names, plural — the dialog's counted lines ("Forms (7) can't publish yet…"). Same keys
+   *  as `typeLabelKeys`, enforced by `section()`'s signature. */
+  readonly typePluralLabelKeys: Readonly<Record<string, string>>;
 }
 
 export const PUBLISH_SECTIONS = [
-  section("pages", "Publish pages", "Sends your pages to the live site.", { page: "Page" }),
-  section("posts", "Publish posts", "Sends your posts to the live site.", { post: "Post" }),
-  section("media", "Publish media", "Sends your media to the live site.", { media: "Media" }),
-  section("menus", "Publish menus", "Sends your menus to the live site.", { menu: "Menu" }),
-  section("redirects", "Publish redirects", "Sends your redirects to the live site.", { redirect: "Redirect" }),
-  section("themes", "Publish themes", "Sends your themes to the live site.", { "theme-files": "Theme" }),
-  section("forms", "Publish forms", "Sends your forms to the live site.", { form: "Form" }),
-  section("collections", "Publish collections", "Sends your collections and their entries to the live site.", {
-    "content-type": "Collection",
-    "collection-entry": "Entry",
-  }),
-  section("categories", "Publish categories & tags", "Sends your categories and tags to the live site.", {
-    taxonomy: "Taxonomy",
-    term: "Term",
-  }),
-  section("widgets", "Publish widgets", "Sends your widgets and widget regions to the live site.", {
-    widget: "Widget",
-    "widget-area": "Widget region",
-  }),
+  section("pages", "Publish pages", "Sends your pages to the live site.", { page: "Page" }, { page: "Pages" }),
+  section("posts", "Publish posts", "Sends your posts to the live site.", { post: "Post" }, { post: "Posts" }),
+  section("media", "Publish media", "Sends your media to the live site.", { media: "Media" }, { media: "Media" }),
+  section("menus", "Publish menus", "Sends your menus to the live site.", { menu: "Menu" }, { menu: "Menus" }),
+  section(
+    "redirects",
+    "Publish redirects",
+    "Sends your redirects to the live site.",
+    { redirect: "Redirect" },
+    { redirect: "Redirects" },
+  ),
+  section(
+    "themes",
+    "Publish themes",
+    "Sends your themes to the live site.",
+    { "theme-files": "Theme" },
+    { "theme-files": "Themes" },
+  ),
+  section("forms", "Publish forms", "Sends your forms to the live site.", { form: "Form" }, { form: "Forms" }),
+  section(
+    "collections",
+    "Publish collections",
+    "Sends your collections and their entries to the live site.",
+    { "content-type": "Collection", "collection-entry": "Entry" },
+    { "content-type": "Collections", "collection-entry": "Entries" },
+  ),
+  section(
+    "categories",
+    "Publish categories & tags",
+    "Sends your categories and tags to the live site.",
+    { taxonomy: "Taxonomy", term: "Term" },
+    { taxonomy: "Taxonomies", term: "Terms" },
+  ),
+  section(
+    "widgets",
+    "Publish widgets",
+    "Sends your widgets and widget regions to the live site.",
+    { widget: "Widget", "widget-area": "Widget region" },
+    { widget: "Widgets", "widget-area": "Widget regions" },
+  ),
 ] as const satisfies readonly PublishSection[];
 
 export type PublishSectionId = (typeof PUBLISH_SECTIONS)[number]["section"];
@@ -78,11 +102,36 @@ export function publishEntityTypeLabel(entityType: string): string {
   return entityType;
 }
 
+/** The plural friendly name for a counted line, or the raw `entityType` for a type no section names
+ *  yet (degraded, never blank). @complexity O(sections). */
+export function publishEntityTypePluralLabel(entityType: string): string {
+  for (const candidate of PUBLISH_SECTIONS) {
+    const label: string | undefined = (candidate.typePluralLabelKeys as Readonly<Record<string, string>>)[entityType];
+    if (label !== undefined) return label;
+  }
+  return entityType;
+}
+
 function section<const S extends string, const T extends Record<string, string>>(
   id: S,
   labelKey: string,
   descriptionKey: string,
   typeLabelKeys: T,
-): { section: S; entityTypes: readonly (keyof T & string)[]; labelKey: string; descriptionKey: string; typeLabelKeys: T } {
-  return { section: id, entityTypes: Object.keys(typeLabelKeys) as (keyof T & string)[], labelKey, descriptionKey, typeLabelKeys };
+  typePluralLabelKeys: { readonly [K in keyof T]: string },
+): {
+  section: S;
+  entityTypes: readonly (keyof T & string)[];
+  labelKey: string;
+  descriptionKey: string;
+  typeLabelKeys: T;
+  typePluralLabelKeys: { readonly [K in keyof T]: string };
+} {
+  return {
+    section: id,
+    entityTypes: Object.keys(typeLabelKeys) as (keyof T & string)[],
+    labelKey,
+    descriptionKey,
+    typeLabelKeys,
+    typePluralLabelKeys,
+  };
 }

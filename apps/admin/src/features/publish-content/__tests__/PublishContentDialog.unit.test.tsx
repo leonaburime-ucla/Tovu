@@ -1521,3 +1521,56 @@ describe("PublishContentDialog — a carried-along media conflict", () => {
     expect(narrowed.overwriteEntityKeys).toEqual(["media:m-hero"]);
   });
 });
+
+describe("PublishContentDialog — types the live site can't take yet", () => {
+  const EMPTY_REPORT: PublishContentReport = { refused: false, refusalReason: null, applyOrder: [], rows: [] };
+
+  async function planWithoutTable(port: ReturnType<typeof createFakePublishContentPort>) {
+    const user = userEvent.setup();
+    renderDialog(port, { scope: { entityTypes: ["form"] } });
+    await waitFor(() => expect(port.calls.listPeers).toBe(1));
+    await user.click(primaryButton());
+    await waitFor(() => expect(port.calls.planPublish).toHaveLength(1));
+  }
+
+  it("names each held-back type and never says 'Nothing to publish' for an empty report", async () => {
+    const port = createFakePublishContentPort({
+      peers: ONE_PEER,
+      report: EMPTY_REPORT,
+      notSupportedByLive: [
+        { entityType: "form", count: 7 },
+        { entityType: "widget-area", count: 1 },
+      ],
+    });
+    await planWithoutTable(port);
+
+    await waitFor(() => expect(primaryButton().textContent).toBe("Update the live site first"));
+    expect(primaryButton().disabled).toBe(true);
+    expect([...document.querySelectorAll(".publish-content-live-gap")].map((line) => line.textContent)).toEqual([
+      "Forms (7) can't publish yet: the live site needs an update first.",
+      "Widget regions (1) can't publish yet: the live site needs an update first.",
+    ]);
+  });
+
+  it("still says 'Nothing to publish' when the live took every type", async () => {
+    const port = createFakePublishContentPort({ peers: ONE_PEER, report: EMPTY_REPORT, notSupportedByLive: [] });
+    await planWithoutTable(port);
+
+    await waitFor(() => expect(primaryButton().textContent).toBe("Nothing to publish"));
+    expect(document.querySelectorAll(".publish-content-live-gap")).toHaveLength(0);
+  });
+
+  it("shows the held-back line alongside a report that has rows, keeping the counted button", async () => {
+    const port = createFakePublishContentPort({
+      peers: ONE_PEER,
+      report: MIXED_REPORT,
+      notSupportedByLive: [{ entityType: "menu", count: 2 }],
+    });
+    await planFrom(port);
+
+    expect(primaryButton().textContent).toBe("Publish 1 item");
+    expect(document.querySelector(".publish-content-live-gap")?.textContent).toBe(
+      "Menus (2) can't publish yet: the live site needs an update first."
+    );
+  });
+});

@@ -165,6 +165,11 @@ export function PublishContentDialog({ onCancel, t, port, criteria, scope, onPla
             {line}
           </p>
         ))}
+        {view.liveGapNotices.map((line) => (
+          <p key={line} className="notice publish-content-live-gap" role="status">
+            {line}
+          </p>
+        ))}
 
         {view.rows.length > 0 && (
           <>

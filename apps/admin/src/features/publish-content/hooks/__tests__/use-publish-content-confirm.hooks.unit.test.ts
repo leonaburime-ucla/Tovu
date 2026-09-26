@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { overwriteTooltipFor } from "../use-publish-content-confirm.hooks";
+import { liveGapLinesFor, overwriteTooltipFor } from "../use-publish-content-confirm.hooks";
 
 /**
  * @file `overwriteTooltipFor` — the pure helper `PublishContentDialog.tsx` now calls for the
@@ -33,5 +33,37 @@ describe("overwriteTooltipFor", () => {
     expect(overwriteTooltipFor({ retiresLabel: "About", referencedByLabels: ["Header", "Footer"] }, t)).toBe(
       "About moves to Trash. Menu links follow: Header, Footer"
     );
+  });
+});
+
+describe("liveGapLinesFor", () => {
+  const t = (key: string): string => key;
+
+  it("writes one plain line per held-back type, plural name and count", () => {
+    expect(
+      liveGapLinesFor(
+        [
+          { entityType: "form", count: 7 },
+          { entityType: "collection-entry", count: 1 },
+        ],
+        t
+      )
+    ).toEqual([
+      "Forms (7) can't publish yet: the live site needs an update first.",
+      "Entries (1) can't publish yet: the live site needs an update first.",
+    ]);
+  });
+
+  it("says nothing for an absent or empty list, or a zero count", () => {
+    expect(liveGapLinesFor(undefined, t)).toEqual([]);
+    expect(liveGapLinesFor([], t)).toEqual([]);
+    expect(liveGapLinesFor([{ entityType: "form", count: 0 }], t)).toEqual([]);
+  });
+
+  it("falls back to the raw type id for a type no section names, and translates both parts", () => {
+    const upper = (key: string): string => key.toUpperCase();
+    expect(liveGapLinesFor([{ entityType: "something-new", count: 3 }], upper)).toEqual([
+      "SOMETHING-NEW (3) CAN'T PUBLISH YET: THE LIVE SITE NEEDS AN UPDATE FIRST.",
+    ]);
   });
 });

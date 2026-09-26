@@ -7,11 +7,13 @@ import {
   confirmationTokenFor,
   countSelectedPublishing,
   planOnScreen,
+  publishEntityTypePluralLabel,
   rowPublishesWithSelection,
   selectableRowKeys,
   summarizePublishReport,
   toPublishReportRows,
   type CriteriaSelection,
+  type PublishContentNotSupportedByLive,
   type PublishContentOutcomeRow,
   type PublishContentPeerSummary,
   type PublishContentPhase,
@@ -162,6 +164,9 @@ export interface PublishContentConfirmView {
   /** The server's own lines for each live menu the run could not repoint (plan §2.7) — reported,
    *  never silent. Empty outside the `done` phase and for a live built before the repoint pass. */
   readonly doneNotices: readonly string[];
+  /** One line per type the live site can't take yet (`plan.notSupportedByLive`) — those rows never
+   *  reach the report, so this is the only place they show. Empty when the live took everything. */
+  readonly liveGapNotices: readonly string[];
   /** Set once peers have loaded empty and the destination check has resolved. `null` while peers
    *  exist, are still loading, or the destination check hasn't resolved yet — see this file's
    *  connect-offer effect. */
@@ -206,7 +211,8 @@ function primaryLabelFor(
   connectOffer: PublishContentConnectOffer | null,
   connecting: boolean,
   t: Translate,
-  scope: PublishScope | undefined
+  scope: PublishScope | undefined,
+  onlyLiveGaps: boolean
 ): string {
   if (connectOffer) return connecting ? t("Connecting…") : t("Connect");
   if (phase.kind === "planning") return t("Planning…");
@@ -217,8 +223,30 @@ function primaryLabelFor(
   if (phase.kind !== "planned") return t(publishScopeTitleKey(scope));
   // The SELECTED count, not the plan's own: the button must promise what this click will actually
   // do. A plan of 59 writable rows with 56 unchecked says "Publish 3 items".
-  if (selectedPublishing === 0) return t("Nothing to publish");
+  // An empty report whose types the live site simply can't take yet is not "nothing to publish" —
+  // the content is there, the live is behind (see `liveGapLinesFor`).
+  if (selectedPublishing === 0) return onlyLiveGaps ? t("Update the live site first") : t("Nothing to publish");
   return `${t("Publish")} ${selectedPublishing} ${selectedPublishing === 1 ? t("item") : t("items")}`;
+}
+
+/**
+ * One line per type the live site can't take yet, e.g. "Forms (7) can't publish yet: the live site
+ * needs an update first." The plural type name comes from `PUBLISH_SECTIONS` (`ui/sections.ts`);
+ * the count sits in brackets so the sentence reads the same for 1 and for 7 in every locale (this
+ * app's translator has no plurals or interpolation — see `primaryLabelFor`).
+ *
+ * @complexity O(n) in `entries.length`.
+ */
+export function liveGapLinesFor(
+  entries: readonly PublishContentNotSupportedByLive[] | undefined,
+  t: Translate
+): readonly string[] {
+  return (entries ?? [])
+    .filter((entry) => entry.count > 0)
+    .map(
+      (entry) =>
+        `${t(publishEntityTypePluralLabel(entry.entityType))} (${entry.count}) ${t("can't publish yet: the live site needs an update first.")}`
+    );
 }
 
 /**
@@ -805,6 +833,7 @@ export function usePublishContentConfirm(props: {
   const visiblePlan = planOnScreen(phase);
   const rows = visiblePlan === null ? EMPTY_ROWS : toPublishReportRows(visiblePlan.details);
   const summary = visiblePlan === null ? null : summarizePublishReport(rows);
+  const liveGapNotices = liveGapLinesFor(visiblePlan?.notSupportedByLive, t);
 
   // Derived every render rather than stored: `deselectedKeys` is the only state, so these can never
   // disagree with it or with the rows currently on screen.
@@ -1001,7 +1030,15 @@ export function usePublishContentConfirm(props: {
     overwriteUnavailable,
     title: publishScopeTitleKey(props.scope),
     description: publishScopeDescriptionKey(props.scope),
-    primaryLabel: primaryLabelFor(phase, selectedPublishing, connectOffer, connecting, t, props.scope),
+    primaryLabel: primaryLabelFor(
+      phase,
+      selectedPublishing,
+      connectOffer,
+      connecting,
+      t,
+      props.scope,
+      rows.length === 0 && liveGapNotices.length > 0
+    ),
     primaryDisabled: connectOffer
       ? connecting || connectOffer.candidateUrl === null
       : // `selectedPublishing` is ANDed with the plan-level rule, never a replacement for it: a plan
@@ -1015,6 +1052,7 @@ export function usePublishContentConfirm(props: {
     doneMessage: doneMessageFor(phase, t),
     // De-duplicated: a grant that doesn't cover menus refuses every menu with the same line.
     doneNotices: phase.kind === "done" ? [...new Set(phase.result.menuLinksNotUpdated ?? [])] : [],
+    liveGapNotices,
     connectOffer,
   };
 }
