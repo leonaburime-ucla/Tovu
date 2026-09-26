@@ -34,6 +34,13 @@ export function addressHeldByOther(entityType: string, field: string, value: str
   return `${field} '${value}' is already held by a different ${entityType} ('${holderId}')`;
 }
 
+/** Like {@link addressHeldByOther}, but the holder is in the Trash: a trashed row keeps its unique
+ *  address, so the create would collide. Worded to match the trash rewrite in `ui/report-rows.ts`.
+ *  @complexity O(1). */
+export function addressHeldInTrash(entityType: string, field: string, value: string, holderId: string): string {
+  return `${entityType} '${holderId}' is in the trash at this destination and still holds ${field} '${value}' — restore it, or delete it permanently from the Trash, before publishing`;
+}
+
 /** The destination's own row for this id is in the Trash — restoring it there is the operator's move,
  *  not an overwrite. Mirrors `features/post/publish-content.ts`'s existing wording exactly — matched
  *  by `ui/report-rows.ts`'s `/^(?:\w+ )?'.+' is in the trash at this destination/`.

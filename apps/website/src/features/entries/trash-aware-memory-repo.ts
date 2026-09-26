@@ -148,6 +148,12 @@ export class TrashAwareInMemoryEntryRepo implements EntryRepoPort, EntryListPort
     return row ? { ...row, deletedAt: this.deletedAt.get(row.id) ?? null } : null;
   }
 
+  /** The `(type, slug)` holder whether or not it is trashed. @complexity O(n) (one slug scan). */
+  async findAnyBySlug(params: { workspaceId: string; type: string; slug: string }): Promise<TrashableEntryRecord | null> {
+    const row = await this.inner.findBySlug(params);
+    return row ? { ...row, deletedAt: this.deletedAt.get(row.id) ?? null } : null;
+  }
+
   /** Trash seam: writes the row and its marker as given. @complexity O(1). */
   async saveAny(record: TrashableEntryRecord): Promise<void> {
     const { deletedAt, ...row } = record;

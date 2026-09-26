@@ -120,6 +120,9 @@ function sortByExpression(by: CollectionSortBy): AnyColumn | SQL {
  *  would then silently skip. */
 export interface EntryPublishReadPort {
   findAnyById(params: { workspaceId: string; id: string }): Promise<TrashableEntryRecord | null>;
+  /** The `(type, slug)` holder, trashed or not: the slug index spans the Trash, so a trashed holder
+   *  still blocks a create and precheck must see it. */
+  findAnyBySlug(params: { workspaceId: string; type: string; slug: string }): Promise<TrashableEntryRecord | null>;
 }
 
 export class SqliteEntryRepo implements EntryRepoPort, EntryListPort, EntryDisplayListPort, EntryListExcludingTypesPort, EntryPublishReadPort {
@@ -141,6 +144,14 @@ export class SqliteEntryRepo implements EntryRepoPort, EntryListPort, EntryDispl
   /** Trash-blind: see {@link EntryPublishReadPort}. @complexity O(1). */
   async findAnyById(params: { workspaceId: string; id: string }): Promise<TrashableEntryRecord | null> {
     return findOneBy(this.db, entries, [eq(entries.workspaceId, params.workspaceId), eq(entries.id, params.id)], (row) => ({
+      ...toRecord(row),
+      deletedAt: row.deletedAt,
+    }));
+  }
+
+  /** Trash-blind: see {@link EntryPublishReadPort}. @complexity O(1). */
+  async findAnyBySlug(params: { workspaceId: string; type: string; slug: string }): Promise<TrashableEntryRecord | null> {
+    return findOneBy(this.db, entries, [eq(entries.workspaceId, params.workspaceId), eq(entries.type, params.type), eq(entries.slug, params.slug)], (row) => ({
       ...toRecord(row),
       deletedAt: row.deletedAt,
     }));

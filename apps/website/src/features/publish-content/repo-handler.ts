@@ -3,7 +3,7 @@ import type { JsonObject } from "@jini-ai/cms/core";
 
 import { PublishContentApplyRowError } from "./apply-errors.js";
 import { contentHash, CONTENT_HASH_VERSION } from "./content-hash.js";
-import { addressHeldByOther, changedSincePlan, notWired, trashedAtDestination } from "./precheck-reasons.js";
+import { addressHeldByOther, addressHeldInTrash, changedSincePlan, notWired, trashedAtDestination } from "./precheck-reasons.js";
 import type { PackedEntity, PublishContentContributor, PublishContentDeps, PublishContentHandler } from "./type-registry.js";
 
 /**
@@ -81,7 +81,8 @@ export interface RepoPublishTypeConfig<Row, Ports> {
   readonly requiredBlobs?: (row: Row) => readonly string[];
 
   /** A second unique address (slug, key, name). Precheck refuses when `holder` returns a row with a
-   *  different `idOf`. An empty value is not checked. */
+   *  different `idOf`. An empty value is not checked. When the address stays held by a trashed row,
+   *  `holder` must return that row too (and `isTrashed` say so), or the create collides at apply. */
   readonly address?: {
     readonly field: string;
     readonly holder: (ports: Ports, workspaceId: string, value: string, state: Record<string, unknown>) => Promise<Row | null>;
@@ -190,7 +191,10 @@ export function createRepoPublishHandler<Row, Ports>(config: RepoPublishTypeConf
       const value = address ? entity.state[address.field] : undefined;
       if (address && typeof value === "string" && value) {
         const holder = await address.holder(p, workspaceId, value, entity.state);
-        if (holder && idOf(holder) !== entity.id) return addressHeldByOther(entityType, address.field, value, idOf(holder));
+        if (holder && idOf(holder) !== entity.id) {
+          const held = config.isTrashed?.(holder) ? addressHeldInTrash : addressHeldByOther;
+          return held(entityType, address.field, value, idOf(holder));
+        }
       }
       const existing = await config.find(p, workspaceId, entity.id);
       if (existing && config.isTrashed?.(existing)) return trashedAtDestination(entityType, entity.id);

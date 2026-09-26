@@ -162,13 +162,15 @@ const REASON_REWRITES: readonly ReasonRewrite[] = [
     friendly: "Different version already on the live site. Tick Overwrite to replace it.",
   },
   {
-    // `menu slug '...'` (navigation) as well as bare `slug '...'` (post/media).
-    pattern: /^(?:menu )?slug '.+' is already held by a different \w+/,
+    // `menu slug '...'` (navigation), bare `slug '...'` (post/media), and the factory's other
+    // addresses (`name '...'` for taxonomy/term).
+    pattern: /^(?:menu )?(?:slug|name|key) '.+' is already held by a different [\w-]+/,
     friendly: "Another item on the live site already uses this name.",
   },
   {
-    // post.ts words it `<type> '<id>' is in the trash ...` — the type prefix is part of the real text.
-    pattern: /^(?:\w+ )?'.+' is in the trash at this destination/,
+    // post.ts words it `<type> '<id>' is in the trash ...` — the type prefix is part of the real text,
+    // and hyphenated for factory types (`collection-entry`, `content-type`).
+    pattern: /^(?:[\w-]+ )?'.+' is in the trash at this destination/,
     friendly: "This item is in the trash on the live site. Restore it there before publishing.",
   },
   {

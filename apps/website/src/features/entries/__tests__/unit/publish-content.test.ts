@@ -107,6 +107,16 @@ test("collection-entry: the same (type, slug) under another id is refused and na
   assert.match(soup?.reason ?? "", /e-other/);
 });
 
+test("collection-entry: a trashed destination row holding the same (type, slug) under another id is refused at precheck", async () => {
+  const { dst, source, dest } = await sites();
+  await dst.entries.save(entry({ id: "e-old-soup", slug: "soup" }));
+  dst.trash("e-old-soup");
+
+  const soup = (await plan(await packAll(source), dest)).rows.find((r) => r.entityId === "e-soup");
+  assert.equal(soup?.outcome, "blocked");
+  assert.match(soup?.reason ?? "", /^collection-entry 'e-old-soup' is in the trash at this destination and still holds slug 'soup'/);
+});
+
 test("collection-entry: the same id created at the destination after the plan is a conflict", async () => {
   const { dst, source, dest } = await sites();
   const entities = await packAll(source);

@@ -12,6 +12,7 @@ import test from "node:test";
 
 import type { PublishContentOutcomeRow, PublishContentReport } from "../contract.js";
 import { entityKey } from "../../planner.js";
+import { addressHeldByOther, addressHeldInTrash, trashedAtDestination } from "../../precheck-reasons.js";
 import {
   countSelectedPublishing,
   friendlyPublishReason,
@@ -347,6 +348,24 @@ test("friendlyPublishReason rewrites the post trash and menu slug reasons exactl
       "menu slug 'main' is already held by a different menu ('c0bf1802-f30a-4ac6-9de3-fa65e3667897') at this destination",
       "Another item on the live site already uses this name.",
     ],
+  ];
+
+  for (const [raw, friendly] of cases) {
+    assert.equal(friendlyPublishReason(raw), friendly, raw);
+  }
+});
+
+// The factory's (`repo-handler.ts`) hyphenated types and its non-slug addresses (taxonomy/term
+// `name`), worded by `precheck-reasons.ts` — a `\w+` type prefix never matched them, leaking the id.
+test("friendlyPublishReason rewrites the factory types' trash and address reasons", () => {
+  const trash = "This item is in the trash on the live site. Restore it there before publishing.";
+  const held = "Another item on the live site already uses this name.";
+  const cases: ReadonlyArray<[string, string]> = [
+    [trashedAtDestination("collection-entry", "e-1"), trash],
+    [trashedAtDestination("content-type", "recipe"), trash],
+    [addressHeldInTrash("widget", "slug", "about", "w-9"), trash],
+    [addressHeldByOther("collection-entry", "slug", "soup", "e-2"), held],
+    [addressHeldByOther("taxonomy", "name", "Category", "tx-2"), held],
   ];
 
   for (const [raw, friendly] of cases) {
